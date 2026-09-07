@@ -23,6 +23,13 @@ export const MIN_SCALE = 0.01
 
 export type EditorMode = 'transform' | 'warp'
 
+/** 부호(뒤집기)는 유지하면서 크기가 0이 되지 않게 막는다 */
+function clampScale(value: number): number {
+  if (!Number.isFinite(value) || value === 0) return MIN_SCALE
+  const sign = value < 0 ? -1 : 1
+  return sign * Math.max(MIN_SCALE, Math.abs(value))
+}
+
 export interface Viewport {
   zoom: number
   panX: number
@@ -149,7 +156,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           layers: state.document.layers.map((layer) => {
             if (layer.id !== id) return layer
             const merged = { ...layer.transform, ...patch }
-            return { ...layer, transform: { ...merged, scale: Math.max(MIN_SCALE, merged.scale) } }
+            // 확대율이 0이 되면 모양이 사라져 되돌릴 수 없으므로 최소값을 지킨다 (뒤집기는 허용)
+            return {
+              ...layer,
+              transform: {
+                ...merged,
+                scaleX: clampScale(merged.scaleX),
+                scaleY: clampScale(merged.scaleY),
+              },
+            }
           }),
         },
       }

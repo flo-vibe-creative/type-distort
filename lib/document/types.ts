@@ -7,7 +7,9 @@ export interface LayerTransform {
   /** 캔버스 위에서의 위치 (왜곡 결과의 왼쪽 위 기준) */
   x: number
   y: number
-  scale: number
+  /** 가로 확대율 — 모서리를 잡아 자유롭게 늘릴 수 있도록 축마다 따로 둔다 */
+  scaleX: number
+  scaleY: number
   /** 도 단위 회전 */
   rotation: number
 }

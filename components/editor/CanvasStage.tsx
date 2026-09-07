@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LayerView } from '@/components/editor/LayerView'
+import { TransformHandles } from '@/components/editor/TransformHandles'
 import { Text } from '@/components/ui/Text'
+import { useLayerInteraction } from '@/hooks/useLayerInteraction'
+import type { HandleId } from '@/lib/render/layerFrame'
+import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
+import type { Point } from '@/lib/warp/types'
 import { MAX_ZOOM, MIN_ZOOM, useEditorStore } from '@/store/editorStore'
 
 /** 화면 맞춤 시 캔버스 둘레에 남기는 여백 (px) */
@@ -14,12 +19,29 @@ export function CanvasStage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const document = useEditorStore((state) => state.document)
   const viewport = useEditorStore((state) => state.viewport)
+  const mode = useEditorStore((state) => state.mode)
+  const selectedLayerId = useEditorStore((state) => state.selectedLayerId)
   const setViewport = useEditorStore((state) => state.setViewport)
   const selectLayer = useEditorStore((state) => state.selectLayer)
+  const setMode = useEditorStore((state) => state.setMode)
 
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [panning, setPanning] = useState(false)
   const fittedRef = useRef(false)
+
+  /** 화면 좌표 → 캔버스 좌표 */
+  const toCanvasPoint = useCallback((event: { clientX: number; clientY: number }): Point => {
+    const container = containerRef.current
+    const { zoom, panX, panY } = useEditorStore.getState().viewport
+    if (!container) return { x: 0, y: 0 }
+    const rect = container.getBoundingClientRect()
+    return {
+      x: (event.clientX - rect.left - panX) / zoom,
+      y: (event.clientY - rect.top - panY) / zoom,
+    }
+  }, [])
+
+  const interaction = useLayerInteraction(toCanvasPoint)
 
   const fitToView = useCallback(() => {
     const container = containerRef.current
@@ -43,8 +65,7 @@ export function CanvasStage() {
   // 레이아웃이 잡히기 전에는 크기가 0이므로, 크기가 정해지는 순간을 지켜보다 한 번만 맞춘다.
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
-    if (fittedRef.current) return
+    if (!container || fittedRef.current) return
 
     const tryFit = () => {
       if (fittedRef.current) return
@@ -109,16 +130,35 @@ export function CanvasStage() {
   }, [])
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const isPanGesture = spaceHeld || event.button === 1
-    if (isPanGesture) {
+    if (spaceHeld || event.button === 1) {
       event.currentTarget.setPointerCapture(event.pointerId)
       setPanning(true)
       return
     }
-    // 빈 곳을 누르면 선택을 푼다
-    if (event.target === event.currentTarget || event.currentTarget.contains(event.target as Node)) {
+    if (event.button !== 0) return
+
+    // 실제로 그려진 도형을 눌렀는지 DOM으로 확인한다 — 보이는 그대로가 곧 선택 범위가 된다
+    const hit = (event.target as HTMLElement).closest('[data-layer-id]')
+    const layerId = hit?.getAttribute('data-layer-id') ?? null
+
+    if (!layerId) {
       selectLayer(null)
+      return
     }
+
+    selectLayer(layerId)
+    // 배치 모드에서만 곧바로 끌어 옮긴다 (왜곡 모드에서는 핸들 조작이 우선이다)
+    if (useEditorStore.getState().mode === 'transform') {
+      interaction.beginMove(layerId, toCanvasPoint(event))
+    }
+  }
+
+  const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const hit = (event.target as HTMLElement).closest('[data-layer-id]')
+    const layerId = hit?.getAttribute('data-layer-id')
+    if (!layerId) return
+    selectLayer(layerId)
+    setMode('warp')
   }
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -127,6 +167,10 @@ export function CanvasStage() {
   }
 
   const stopPanning = () => setPanning(false)
+
+  const selectedLayer = document.layers.find((layer) => layer.id === selectedLayerId) ?? null
+  const showTransformHandles =
+    selectedLayer !== null && selectedLayer.visible && mode === 'transform'
 
   const hasLayers = document.layers.length > 0
   const cursor = panning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
@@ -140,6 +184,7 @@ export function CanvasStage() {
       onPointerMove={onPointerMove}
       onPointerUp={stopPanning}
       onPointerCancel={stopPanning}
+      onDoubleClick={onDoubleClick}
     >
       <div
         className="absolute left-0 top-0 shadow-[0_2px_16px_rgba(0,0,0,0.08)]"
@@ -158,9 +203,33 @@ export function CanvasStage() {
             canvasWidth={document.canvas.width}
             canvasHeight={document.canvas.height}
             zoom={viewport.zoom}
-            dragging={false}
+            dragging={interaction.dragging}
           />
         ))}
+
+        {showTransformHandles && (
+          <svg
+            viewBox={overlayViewBox(document.canvas.width, document.canvas.height)}
+            className="pointer-events-none absolute"
+            style={{
+              ...overlayStyle(document.canvas.width, document.canvas.height),
+              overflow: 'visible',
+            }}
+          >
+            <TransformHandles
+              layer={selectedLayer}
+              zoom={viewport.zoom}
+              onResizeStart={(handle: HandleId, event) => {
+                event.stopPropagation()
+                interaction.beginResize(selectedLayer.id, handle, toCanvasPoint(event))
+              }}
+              onRotateStart={(event) => {
+                event.stopPropagation()
+                interaction.beginRotate(selectedLayer.id, toCanvasPoint(event))
+              }}
+            />
+          </svg>
+        )}
       </div>
 
       {!hasLayers && (

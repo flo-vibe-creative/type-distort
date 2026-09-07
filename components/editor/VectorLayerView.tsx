@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import type { Layer, VectorLayerSource } from '@/lib/document/types'
+import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import { toleranceForZoom, warpCommandsToPathData } from '@/lib/render/warpShape'
 
 interface VectorLayerViewProps {
@@ -26,7 +27,11 @@ export function VectorLayerView({
   zoom,
   dragging,
 }: VectorLayerViewProps) {
-  const tolerance = toleranceForZoom(zoom, layer.transform.scale, dragging)
+  const tolerance = toleranceForZoom(
+    zoom,
+    Math.max(Math.abs(layer.transform.scaleX), Math.abs(layer.transform.scaleY)),
+    dragging
+  )
 
   const paths = useMemo(
     () =>
@@ -40,18 +45,20 @@ export function VectorLayerView({
     [source.shapes, source.bounds, layer.warp, tolerance]
   )
 
-  const { x, y, scale, rotation } = layer.transform
+  const { x, y, scaleX, scaleY, rotation } = layer.transform
 
   return (
     <svg
-      width={canvasWidth}
-      height={canvasHeight}
-      viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-      className="pointer-events-none absolute left-0 top-0"
-      style={{ overflow: 'visible' }}
+      viewBox={overlayViewBox(canvasWidth, canvasHeight)}
+      className="pointer-events-none absolute"
+      style={{ ...overlayStyle(canvasWidth, canvasHeight), overflow: 'visible' }}
       aria-hidden
     >
-      <g transform={`translate(${x} ${y}) rotate(${rotation}) scale(${scale})`}>
+      <g
+        data-layer-id={layer.id}
+        style={{ pointerEvents: 'auto' }}
+        transform={`translate(${x} ${y}) rotate(${rotation}) scale(${scaleX} ${scaleY})`}
+      >
         {paths.map((path) => (
           <path
             key={path.key}

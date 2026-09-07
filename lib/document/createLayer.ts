@@ -35,7 +35,7 @@ export function createVectorLayer(svg: ParsedSvg, fileName: string): Layer {
     name: layerNameFromFileName(fileName),
     visible: true,
     source: { kind: 'vector', shapes: svg.shapes, bounds: contentBounds },
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
   }
 }
@@ -53,7 +53,7 @@ export function createRasterLayer(image: RasterSource, fileName: string): Layer 
       height: image.height,
       scaledDown: image.scaledDown,
     },
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
   }
 }

@@ -9,7 +9,7 @@ function layer(width: number, height: number): Layer {
     name: 'a',
     visible: true,
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: width, maxY: height } },
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
   }
 }

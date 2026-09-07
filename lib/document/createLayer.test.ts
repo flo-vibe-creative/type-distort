@@ -33,7 +33,7 @@ describe('createVectorLayer', () => {
 
   it('배치는 스토어가 정하므로 원점에서 시작한다', () => {
     const layer = createVectorLayer(svg, 'WOW.svg')
-    expect(layer.transform).toEqual({ x: 0, y: 0, scale: 1, rotation: 0 })
+    expect(layer.transform).toEqual({ x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 })
   })
 
   it('처음에는 왜곡이 걸려 있지 않다', () => {

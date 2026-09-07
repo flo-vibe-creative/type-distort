@@ -32,7 +32,12 @@ export function RasterLayerView({ layer, source, zoom, dragging }: RasterLayerVi
   const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
   const pixelScale = Math.min(
     MAX_PIXEL_SCALE,
-    Math.max(0.25, zoom * layer.transform.scale * devicePixelRatio)
+    Math.max(
+      0.25,
+      zoom *
+        Math.max(Math.abs(layer.transform.scaleX), Math.abs(layer.transform.scaleY)) *
+        devicePixelRatio
+    )
   )
 
   useEffect(() => {
@@ -67,17 +72,18 @@ export function RasterLayerView({ layer, source, zoom, dragging }: RasterLayerVi
     context.drawImage(rendered, 0, 0)
   }, [source.bitmap, source.width, source.height, layer.warp, bounds, pixelScale, dragging])
 
-  const { x, y, scale, rotation } = layer.transform
+  const { x, y, scaleX, scaleY, rotation } = layer.transform
 
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute left-0 top-0"
+      data-layer-id={layer.id}
+      className="absolute left-0 top-0"
       style={{
         width: `${width}px`,
         height: `${height}px`,
         transformOrigin: '0 0',
-        transform: `translate(${x}px, ${y}px) rotate(${rotation}deg) scale(${scale}) translate(${bounds.minX}px, ${bounds.minY}px)`,
+        transform: `translate(${x}px, ${y}px) rotate(${rotation}deg) scale(${scaleX}, ${scaleY}) translate(${bounds.minX}px, ${bounds.minY}px)`,
       }}
     />
   )

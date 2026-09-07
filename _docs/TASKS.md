@@ -7,9 +7,9 @@
 | 구분 | 개수 |
 | --- | --- |
 | 전체 기능 | 10 |
-| ✅ 완료 | 5 |
+| ✅ 완료 | 6 |
 | 🔄 진행 중 | 0 |
-| ⏳ 예정 | 5 |
+| ⏳ 예정 | 4 |
 
 | # | 기능 | Status |
 | --- | --- | --- |
@@ -18,7 +18,7 @@
 | 3 | SVG 가져오기 | ✅ 완료 |
 | 4 | 이미지(PNG·JPEG) 가져오기 | ✅ 완료 |
 | 5 | 레이어 시스템 & 캔버스 화면 | ✅ 완료 |
-| 6 | 배치 편집 (이동·크기·회전) | ⏳ 예정 |
+| 6 | 배치 편집 (이동·크기·회전) | ✅ 완료 |
 | 7 | 왜곡 편집 UI (핸들·슬라이더) | ⏳ 예정 |
 | 8 | 내보내기 (SVG·PNG·JPEG) | ⏳ 예정 |
 | 9 | 되돌리기 & 자동 저장 | ⏳ 예정 |
@@ -61,6 +61,11 @@
 | `components/editor/LayerView.tsx` | 레이어 종류별 렌더러 분기 |
 | `components/editor/VectorLayerView.tsx` | 벡터 레이어 SVG 렌더 |
 | `components/editor/RasterLayerView.tsx` | 이미지 레이어 WebGL 렌더 |
+| `lib/render/layerFrame.ts` | 좌표 변환, 크기 조절·회전 계산 |
+| `lib/render/overlay.ts` | 캔버스 밖까지 클릭되도록 넓힌 오버레이 크기 |
+| `hooks/useLayerInteraction.ts` | 이동·크기·회전 드래그 |
+| `hooks/useEditorKeyboard.ts` | 단축키 |
+| `components/editor/NumberField.tsx` | 숫자 입력 칸 |
 | `components/editor/TransformHandles.tsx` | 배치 핸들 |
 | `components/editor/WarpHandles.tsx` | 왜곡 핸들 (효과별 분기) |
 | `components/editor/InspectorPanel.tsx` | 우측 배치/왜곡 탭 |
@@ -130,16 +135,16 @@
 
 ## 기능 6. 배치 편집 (이동·크기·회전)
 
-**Status:** ⏳ 예정
+**Status:** ✅ 완료
 **목표:** 피그마처럼 레이어를 클릭해 선택하고 드래그해서 옮기고, 모서리로 크기·회전을 조절할 수 있다.
 
-- [ ] 레이어별 `transform`(위치·크기·회전)을 렌더에 반영 (왜곡 결과에 곱해지는 순서 검증 테스트)
-- [ ] 캔버스 클릭 히트테스트 — 겹친 경우 레이어 순서상 위쪽 우선
-- [ ] `components/editor/TransformHandles.tsx` — 바운딩 박스, 드래그 이동
-- [ ] 모서리 드래그로 크기 조절, 모서리 바깥에서 회전
-- [ ] 단축키 — `Shift` 축 고정 / 비율 유지, 방향키 1px, `Shift`+방향키 10px, `Esc` 선택 해제
-- [ ] `InspectorPanel.tsx` 배치 탭에 숫자 입력 필드 연결 (양방향 동기화)
-- [ ] 직접 조작해보고 커밋
+- [x] 레이어별 `transform`(위치·크기·회전)을 렌더에 반영 (왜곡 결과에 곱해지는 순서 검증 테스트)
+- [x] 캔버스 클릭 히트테스트 — 실제로 그려진 도형만 선택되도록 DOM 기준으로 판정 (겹치면 위에 그려진 것이 우선)
+- [x] `components/editor/TransformHandles.tsx` — 바운딩 박스, 드래그 이동
+- [x] 모서리 드래그로 크기 조절, 모서리 바깥에서 회전
+- [x] 단축키 — `Shift` 축 고정 / 비율 유지, 방향키 1px, `Shift`+방향키 10px, `Esc` 선택 해제
+- [x] `InspectorPanel.tsx` 배치 탭에 숫자 입력 필드 연결 (양방향 동기화)
+- [x] 직접 조작해보고 커밋
 
 ## 기능 7. 왜곡 편집 UI (핸들·슬라이더)
 

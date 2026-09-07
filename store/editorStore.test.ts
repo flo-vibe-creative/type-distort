@@ -16,7 +16,7 @@ function fakeLayer(name: string, width = 100, height = 50): Layer {
       shapes: [],
       bounds: { minX: 0, minY: 0, maxX: width, maxY: height },
     },
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
   }
 }
@@ -111,14 +111,24 @@ describe('배치와 왜곡 수정', () => {
     store().addLayers([a])
     store().updateTransform(a.id, { rotation: 30 })
     expect(store().document.layers[0].transform.rotation).toBe(30)
-    expect(store().document.layers[0].transform.scale).toBe(1)
+    expect(store().document.layers[0].transform.scaleX).toBe(1)
   })
 
-  it('크기는 0 이하로 내려가지 않는다', () => {
+  it('가로세로 확대율을 따로 바꿀 수 있다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
-    store().updateTransform(a.id, { scale: -2 })
-    expect(store().document.layers[0].transform.scale).toBeGreaterThan(0)
+    store().updateTransform(a.id, { scaleX: 2 })
+    expect(store().document.layers[0].transform.scaleX).toBe(2)
+    expect(store().document.layers[0].transform.scaleY).toBe(1)
+  })
+
+  it('확대율이 0이 되지 않게 막되 뒤집기(음수)는 허용한다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().updateTransform(a.id, { scaleX: 0 })
+    expect(Math.abs(store().document.layers[0].transform.scaleX)).toBeGreaterThan(0)
+    store().updateTransform(a.id, { scaleX: -2 })
+    expect(store().document.layers[0].transform.scaleX).toBe(-2)
   })
 
   it('왜곡 종류를 바꾸면 그 효과의 기본값으로 초기화된다', () => {
