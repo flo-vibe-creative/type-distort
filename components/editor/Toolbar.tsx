@@ -1,0 +1,59 @@
+'use client'
+
+import { useRef } from 'react'
+import { Text } from '@/components/ui/Text'
+import { useFileImport } from '@/hooks/useFileImport'
+import { supportedImportLabel } from '@/lib/document/importFiles'
+
+export function Toolbar() {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const { importFileList, importing } = useFileImport()
+
+  return (
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={importing}
+          className="rounded-md border border-border px-3 py-1.5 hover:bg-surface-minimal disabled:opacity-50"
+        >
+          <Text variant="ui13" as="span">
+            {importing ? '가져오는 중…' : '+ 가져오기'}
+          </Text>
+        </button>
+        <Text variant="caption12" as="span" color="text-fg-tertiary">
+          {supportedImportLabel}
+        </Text>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg"
+          multiple
+          hidden
+          onChange={(event) => {
+            void importFileList(Array.from(event.target.files ?? []))
+            event.target.value = ''
+          }}
+        />
+      </div>
+
+      <Text variant="ui16" as="h1">
+        Type Distort
+      </Text>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled
+          className="rounded-md border border-border px-3 py-1.5 opacity-40"
+          title="다음 단계에서 구현합니다"
+        >
+          <Text variant="ui13" as="span">
+            내보내기
+          </Text>
+        </button>
+      </div>
+    </header>
+  )
+}

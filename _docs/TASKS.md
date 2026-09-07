@@ -7,9 +7,9 @@
 | 구분 | 개수 |
 | --- | --- |
 | 전체 기능 | 10 |
-| ✅ 완료 | 4 |
+| ✅ 완료 | 5 |
 | 🔄 진행 중 | 0 |
-| ⏳ 예정 | 6 |
+| ⏳ 예정 | 5 |
 
 | # | 기능 | Status |
 | --- | --- | --- |
@@ -17,7 +17,7 @@
 | 2 | 왜곡 엔진 (계산식 4종) | ✅ 완료 |
 | 3 | SVG 가져오기 | ✅ 완료 |
 | 4 | 이미지(PNG·JPEG) 가져오기 | ✅ 완료 |
-| 5 | 레이어 시스템 & 캔버스 화면 | ⏳ 예정 |
+| 5 | 레이어 시스템 & 캔버스 화면 | ✅ 완료 |
 | 6 | 배치 편집 (이동·크기·회전) | ⏳ 예정 |
 | 7 | 왜곡 편집 UI (핸들·슬라이더) | ⏳ 예정 |
 | 8 | 내보내기 (SVG·PNG·JPEG) | ⏳ 예정 |
@@ -46,11 +46,19 @@
 | `lib/raster/glRenderer.ts` | WebGL 격자 메쉬 렌더러 |
 | `lib/export/toSvg.ts` | SVG 내보내기 |
 | `lib/export/toRaster.ts` | PNG·JPEG 내보내기 |
+| `lib/document/types.ts` | 문서·레이어 데이터 구조 |
+| `lib/document/createLayer.ts` | 가져온 파일 → 레이어 변환 |
+| `lib/document/importFiles.ts` | 여러 파일 일괄 가져오기 + 실패 수집 |
+| `lib/render/warpShape.ts` | 경로에 왜곡 적용 → `d` 문자열, 세분화 정밀도 결정 |
+| `lib/render/layerBounds.ts` | 왜곡된 모양이 차지하는 범위 계산 |
+| `hooks/useFileImport.ts` | 가져오기 흐름 (버튼·드래그 공통) |
 | `store/editorStore.ts` | 문서 상태·선택·모드·되돌리기 |
+| `store/noticeStore.ts` | 사용자 안내 메시지 |
 | `store/persist.ts` | 브라우저 자동 저장·복구 |
 | `components/editor/Toolbar.tsx` | 상단 바 |
 | `components/editor/LayerPanel.tsx` | 좌측 레이어 목록 |
 | `components/editor/CanvasStage.tsx` | 중앙 캔버스 뷰포트 (줌·팬·히트테스트) |
+| `components/editor/LayerView.tsx` | 레이어 종류별 렌더러 분기 |
 | `components/editor/VectorLayerView.tsx` | 벡터 레이어 SVG 렌더 |
 | `components/editor/RasterLayerView.tsx` | 이미지 레이어 WebGL 렌더 |
 | `components/editor/TransformHandles.tsx` | 배치 핸들 |
@@ -58,6 +66,7 @@
 | `components/editor/InspectorPanel.tsx` | 우측 배치/왜곡 탭 |
 | `components/editor/ExportDialog.tsx` | 내보내기 옵션 창 |
 | `components/editor/DropZone.tsx` | 파일 드래그&드롭 |
+| `components/editor/NoticeList.tsx` | 안내 메시지 표시 |
 
 ---
 
@@ -108,16 +117,16 @@
 
 ## 기능 5. 레이어 시스템 & 캔버스 화면
 
-**Status:** ⏳ 예정
+**Status:** ✅ 완료
 **목표:** 파일을 끌어다 놓으면 레이어로 쌓이고, 캔버스에 왜곡이 적용된 모습이 보인다. 줌·팬이 된다.
 
-- [ ] `store/editorStore.ts` — 문서 구조(캔버스·레이어 배열), 레이어 추가/삭제/순서/숨김/선택 (상태 변경 테스트)
-- [ ] `components/editor/DropZone.tsx` + `Toolbar.tsx` 가져오기 버튼 — 다중 파일 처리
-- [ ] `components/editor/LayerPanel.tsx` — 목록, 벡터/이미지 아이콘 구분, 선택·순서·숨김·삭제
-- [ ] `components/editor/VectorLayerView.tsx` — 점열에 warp 적용 후 SVG `<path>` 렌더
-- [ ] `components/editor/RasterLayerView.tsx` + `lib/raster/glRenderer.ts` — WebGL 격자 메쉬로 이미지 렌더
-- [ ] `components/editor/CanvasStage.tsx` — 두 렌더러 겹치기, 휠 확대/축소, 스페이스+드래그 이동
-- [ ] SVG·PNG를 실제로 넣어 화면에 뜨는지 확인 후 커밋
+- [x] `store/editorStore.ts` — 문서 구조(캔버스·레이어 배열), 레이어 추가/삭제/순서/숨김/선택 (상태 변경 테스트)
+- [x] `components/editor/DropZone.tsx` + `Toolbar.tsx` 가져오기 버튼 — 다중 파일 처리
+- [x] `components/editor/LayerPanel.tsx` — 목록, 벡터/이미지 아이콘 구분, 선택·순서·숨김·삭제
+- [x] `components/editor/VectorLayerView.tsx` — 점열에 warp 적용 후 SVG `<path>` 렌더
+- [x] `components/editor/RasterLayerView.tsx` + `lib/raster/glRenderer.ts` — WebGL 격자 메쉬로 이미지 렌더
+- [x] `components/editor/CanvasStage.tsx` — 두 렌더러 겹치기, 휠 확대/축소, 스페이스+드래그 이동
+- [x] SVG·PNG를 실제로 넣어 화면에 뜨는지 확인 후 커밋
 
 ## 기능 6. 배치 편집 (이동·크기·회전)
 

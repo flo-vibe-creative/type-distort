@@ -17,7 +17,7 @@ const MAX_DEPTH = 20
  * 곡선은 "이 조각이 직선이라고 봐도 허용 오차 안인가"를 따져 필요한 만큼만 쪼갠다.
  * 오차를 줄이면 점이 늘고, 늘리면 줄어든다. 화면 배율에 맞춰 호출 쪽에서 조절한다.
  */
-export function flattenPath(commands: PathCommand[], tolerance: number): Subpath[] {
+export function flattenPath(commands: readonly PathCommand[], tolerance: number): Subpath[] {
   const subpaths: Subpath[] = []
   let current: Subpath | null = null
   let cursor: Point = { x: 0, y: 0 }
