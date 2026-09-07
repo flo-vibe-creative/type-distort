@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || ''
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const isProduction = process.env.NODE_ENV === 'production'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -16,17 +17,19 @@ const nextConfig = {
   basePath: BASE_PATH || undefined,
   assetPrefix: BASE_PATH || undefined,
 
-  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  output: isProduction ? 'export' : undefined,
   images: {
     unoptimized: true,
   },
 
   // 정적 빌드(output: 'export')에는 서버가 없어 헤더를 붙일 수 없다.
-  // 개발 중 같은 제약으로 확인할 수 있도록 dev에서만 적용한다.
+  // 개발 중 같은 제약으로 확인할 수 있도록 dev에서만 적용하며,
   // 실제 배포 시에는 서버(nginx 등)에서 같은 헤더를 내려줘야 한다.
-  async headers() {
-    if (process.env.NODE_ENV === 'production') return []
-    return [
+  ...(isProduction ? {} : { headers }),
+}
+
+async function headers() {
+  return [
       {
         source: '/(.*)',
         headers: [
@@ -50,7 +53,6 @@ const nextConfig = {
         ],
       },
     ]
-  },
 }
 
 export default nextConfig

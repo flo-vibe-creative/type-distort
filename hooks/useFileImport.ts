@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { importFiles, supportedImportLabel } from '@/lib/document/importFiles'
+import { isWebglAvailable } from '@/lib/raster/glRenderer'
 import { useEditorStore } from '@/store/editorStore'
 import { useNoticeStore } from '@/store/noticeStore'
 
@@ -22,6 +23,16 @@ export function useFileImport() {
         const outcome = await importFiles(files)
 
         if (outcome.layers.length > 0) addLayers(outcome.layers)
+
+        // 이미지 왜곡은 그래픽 가속을 쓴다 — 쓸 수 없는 환경이면 미리 알려준다
+        const hasRaster = outcome.layers.some((layer) => layer.source.kind === 'raster')
+        if (hasRaster && !isWebglAvailable()) {
+          notify({
+            reason: '이 브라우저에서는 그래픽 가속을 쓸 수 없어 이미지 레이어가 왜곡되지 않고 원본 그대로 보입니다.',
+            hint: '크롬이나 사파리 최신 버전에서 열거나, 브라우저 설정에서 하드웨어 가속을 켜 주세요. SVG 레이어는 영향받지 않습니다.',
+            tone: 'error',
+          })
+        }
 
         outcome.problems.forEach((problem) => {
           notify({ reason: problem.reason, hint: problem.hint, tone: 'error' })
