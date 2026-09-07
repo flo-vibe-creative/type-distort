@@ -1,6 +1,7 @@
 'use client'
 
 import { Text } from '@/components/ui/Text'
+import { useNumericDraft } from '@/hooks/useNumericDraft'
 import { useEditorStore } from '@/store/editorStore'
 
 interface SliderFieldProps {
@@ -15,7 +16,10 @@ interface SliderFieldProps {
   onChange: (value: number) => void
 }
 
-/** 슬라이더와 숫자 표시를 함께 두어 값이 얼마인지 항상 보이게 한다 */
+/**
+ * 슬라이더와 숫자 입력 칸이 함께 놓인 조절 항목.
+ * 슬라이더로 훑어보고, 값을 정확히 맞추고 싶을 때는 숫자를 직접 쳐 넣는다.
+ */
 export function SliderField({
   label,
   value,
@@ -26,20 +30,36 @@ export function SliderField({
   displayScale = 1,
   onChange,
 }: SliderFieldProps) {
+  // 화면에 보이는 값은 배수를 곱한 것이므로 자릿수와 범위도 같은 기준으로 맞춘다
   const displayStep = step * displayScale
   const decimals = displayStep < 1 ? 2 : 0
-  const shown = value * displayScale
+
+  const input = useNumericDraft(value * displayScale, {
+    decimals,
+    min: Math.min(min, max) * displayScale,
+    max: Math.max(min, max) * displayScale,
+    step: displayStep,
+    onCommit: (shown) => onChange(shown / displayScale),
+  })
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Text variant="ui13" as="span" color="text-fg-secondary">
           {label}
         </Text>
-        <Text variant="caption12" as="span" color="text-fg-tertiary">
-          {shown.toFixed(decimals)}
-          {suffix ?? ''}
-        </Text>
+        <span className="flex items-center gap-0.5">
+          <input
+            aria-label={label}
+            {...input}
+            className="w-14 rounded border border-transparent bg-transparent px-1 py-0.5 text-right text-[12px] leading-[18px] text-fg-tertiary outline-none hover:border-border focus:border-blue-800 focus:text-fg-primary"
+          />
+          {suffix && (
+            <Text variant="caption12" as="span" color="text-fg-tertiary">
+              {suffix}
+            </Text>
+          )}
+        </span>
       </div>
       <input
         type="range"

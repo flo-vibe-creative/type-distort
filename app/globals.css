@@ -196,3 +196,18 @@ ol {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   }
 }
+
+/**
+ * 숫자 입력 칸의 위아래 화살표 버튼을 숨긴다.
+ * 좁은 칸에서 자리를 많이 차지하고, 키보드 위아래 키로는 그대로 값을 올리고 내릴 수 있다.
+ */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

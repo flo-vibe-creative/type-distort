@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Text } from '@/components/ui/Text'
+import { useNumericDraft } from '@/hooks/useNumericDraft'
 
 interface NumberFieldProps {
   label: string
@@ -13,10 +13,7 @@ interface NumberFieldProps {
   decimals?: number
 }
 
-/**
- * 숫자 입력 칸.
- * 타이핑 중에는 사용자가 친 그대로 두고, 값이 확정될 때만 반영해 커서가 튀지 않게 한다.
- */
+/** 이름과 숫자 입력 칸이 한 줄로 놓인 형태 */
 export function NumberField({
   label,
   value,
@@ -25,19 +22,7 @@ export function NumberField({
   suffix,
   decimals = 0,
 }: NumberFieldProps) {
-  const [draft, setDraft] = useState(() => value.toFixed(decimals))
-  const [editing, setEditing] = useState(false)
-
-  useEffect(() => {
-    if (!editing) setDraft(value.toFixed(decimals))
-  }, [value, decimals, editing])
-
-  const commit = () => {
-    setEditing(false)
-    const parsed = Number.parseFloat(draft)
-    if (Number.isFinite(parsed)) onChange(parsed)
-    else setDraft(value.toFixed(decimals))
-  }
+  const input = useNumericDraft(value, { decimals, step, onCommit: onChange })
 
   return (
     <label className="flex items-center justify-between gap-2">
@@ -46,15 +31,7 @@ export function NumberField({
       </Text>
       <span className="flex items-center gap-1">
         <input
-          type="number"
-          step={step}
-          value={draft}
-          onFocus={() => setEditing(true)}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur()
-          }}
+          {...input}
           className="w-20 rounded border border-border bg-surface px-2 py-1 text-right text-[13px] leading-[18px] outline-none focus:border-blue-800"
         />
         {suffix && (

@@ -70,6 +70,8 @@
 | `hooks/useLayerInteraction.ts` | 이동·크기·회전 드래그 |
 | `hooks/useEditorKeyboard.ts` | 단축키 |
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
+| `hooks/useNumericDraft.ts` | 숫자 입력 공통 동작 |
+| `lib/format/number.ts` | 숫자 표시·해석 |
 | `components/editor/TransformHandles.tsx` | 배치 핸들 |
 | `lib/warp/handles.ts` | 왜곡 조작점 위치·드래그 계산 |
 | `lib/svg/glyphs.ts` | 도형을 글자 단위로 나누기 |
@@ -170,6 +172,7 @@
 - [x] 네 효과를 모두 조작해보고 커밋
 - [x] 아크 기준선 조절 추가 — 글자가 곡선의 어느 높이에 올라앉을지 핸들·슬라이더로 조절
 - [x] 자간 조절 추가 — 모든 효과에 공통으로 걸리는 글자 사이 간격 (벡터 레이어 전용)
+- [x] 슬라이더 옆 숫자 직접 입력 — 단위 포함 입력, 범위 보정, 방향키 조절
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 
