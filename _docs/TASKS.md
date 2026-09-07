@@ -7,13 +7,13 @@
 | 구분 | 개수 |
 | --- | --- |
 | 전체 기능 | 10 |
-| ✅ 완료 | 0 |
+| ✅ 완료 | 1 |
 | 🔄 진행 중 | 0 |
-| ⏳ 예정 | 10 |
+| ⏳ 예정 | 9 |
 
 | # | 기능 | Status |
 | --- | --- | --- |
-| 1 | 프로젝트 기반 세팅 | ⏳ 예정 |
+| 1 | 프로젝트 기반 세팅 | ✅ 완료 |
 | 2 | 왜곡 엔진 (계산식 4종) | ⏳ 예정 |
 | 3 | SVG 가져오기 | ⏳ 예정 |
 | 4 | 이미지(PNG·JPEG) 가져오기 | ⏳ 예정 |
@@ -63,14 +63,14 @@
 
 ## 기능 1. 프로젝트 기반 세팅
 
-**Status:** ⏳ 예정
+**Status:** ✅ 완료
 **목표:** 브라우저에서 빈 에디터 화면(좌·중·우 3분할)이 뜨고, 테스트를 돌릴 수 있다.
 
-- [ ] Next.js 정적 빌드 설정 (`output: 'export'`, `basePath: '/type-distort'`) + TypeScript + Tailwind 구성
-- [ ] FLO 디자인 시스템 토큰(`tailwind.config.js`, `globals.css`)과 UI 컴포넌트(`Text`, `Button`, `Card`, `Spinner`) 이관
-- [ ] Vitest 설치 및 `npm test` 동작 확인
-- [ ] `app/page.tsx`에 3분할 레이아웃 뼈대 (상단 바 / 좌 레이어 / 중앙 캔버스 / 우 패널)
-- [ ] `npm run dev`로 화면 확인 후 커밋
+- [x] Next.js 정적 빌드 설정 (`output: 'export'`, `basePath: '/type-distort'`) + TypeScript + Tailwind 구성
+- [x] FLO 디자인 시스템 토큰(`tailwind.config.js`, `globals.css`)과 UI 컴포넌트(`Text`, `Button`, `Card`, `Spinner`) 이관
+- [x] Vitest 설치 및 `npm test` 동작 확인
+- [x] `app/page.tsx`에 3분할 레이아웃 뼈대 (상단 바 / 좌 레이어 / 중앙 캔버스 / 우 패널)
+- [x] `npm run dev`로 화면 확인 후 커밋
 
 ## 기능 2. 왜곡 엔진 (계산식 4종)
 
