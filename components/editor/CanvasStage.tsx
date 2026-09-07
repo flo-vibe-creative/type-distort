@@ -29,7 +29,8 @@ export function CanvasStage() {
 
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [panning, setPanning] = useState(false)
-  const fittedRef = useRef(false)
+  // 사용자가 직접 확대하거나 밀기 전까지는 창 크기에 맞춰 자동으로 다시 맞춘다
+  const userAdjustedRef = useRef(false)
 
   /** 화면 좌표 → 캔버스 좌표 */
   const toCanvasPoint = useCallback((event: { clientX: number; clientY: number }): Point => {
@@ -65,22 +66,19 @@ export function CanvasStage() {
     })
   }, [document.canvas.width, document.canvas.height, setViewport])
 
-  // 처음 열렸을 때 캔버스가 화면에 꽉 차게 맞춘다.
-  // 레이아웃이 잡히기 전에는 크기가 0이므로, 크기가 정해지는 순간을 지켜보다 한 번만 맞춘다.
+  // 창 크기가 정해지거나 바뀔 때마다 캔버스를 화면에 맞춘다.
+  // 사용자가 한 번이라도 직접 확대하거나 화면을 밀었다면 그 시점부터는 건드리지 않는다.
   useEffect(() => {
     const container = containerRef.current
-    if (!container || fittedRef.current) return
+    if (!container) return
 
     const tryFit = () => {
-      if (fittedRef.current) return
+      if (userAdjustedRef.current) return
       if (container.clientWidth === 0 || container.clientHeight === 0) return
-      fittedRef.current = true
       fitToView()
     }
 
     tryFit()
-    if (fittedRef.current) return
-
     const observer = new ResizeObserver(tryFit)
     observer.observe(container)
     return () => observer.disconnect()
@@ -113,6 +111,7 @@ export function CanvasStage() {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
+      userAdjustedRef.current = true
       const rect = container.getBoundingClientRect()
       const pointerX = event.clientX - rect.left
       const pointerY = event.clientY - rect.top
@@ -136,6 +135,7 @@ export function CanvasStage() {
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (spaceHeld || event.button === 1) {
       event.currentTarget.setPointerCapture(event.pointerId)
+      userAdjustedRef.current = true
       setPanning(true)
       return
     }
@@ -263,7 +263,15 @@ export function CanvasStage() {
         <Text variant="caption12" as="span" color="text-fg-secondary">
           {Math.round(viewport.zoom * 100)}%
         </Text>
-        <button type="button" onClick={fitToView} className="text-fg-secondary hover:text-fg-primary">
+        <button
+          type="button"
+          onClick={() => {
+            // 다시 맞추면 창 크기를 따라가는 상태로 되돌린다
+            userAdjustedRef.current = false
+            fitToView()
+          }}
+          className="text-fg-secondary hover:text-fg-primary"
+        >
           <Text variant="caption12" as="span">
             화면 맞춤
           </Text>

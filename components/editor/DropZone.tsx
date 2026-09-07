@@ -13,7 +13,7 @@ export function DropZone({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="relative flex h-screen w-screen flex-col overflow-hidden"
+      className="relative h-screen w-screen overflow-y-hidden overflow-x-auto"
       onDragEnter={(event) => {
         if (!event.dataTransfer.types.includes('Files')) return
         depth.current += 1
@@ -35,7 +35,8 @@ export function DropZone({ children }: { children: ReactNode }) {
         void importFileList(Array.from(event.dataTransfer.files))
       }}
     >
-      {children}
+      {/* 창이 좁아도 세 영역이 눌리지 않도록 최소 폭을 두고, 모자라면 가로로 밀어서 본다 */}
+      <div className="flex h-full min-w-[960px] flex-col">{children}</div>
 
       {dragOver && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-4 border-dashed border-blue-800 bg-blue-50/70">
