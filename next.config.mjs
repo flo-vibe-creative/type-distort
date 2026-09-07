@@ -21,7 +21,11 @@ const nextConfig = {
     unoptimized: true,
   },
 
+  // 정적 빌드(output: 'export')에는 서버가 없어 헤더를 붙일 수 없다.
+  // 개발 중 같은 제약으로 확인할 수 있도록 dev에서만 적용한다.
+  // 실제 배포 시에는 서버(nginx 등)에서 같은 헤더를 내려줘야 한다.
   async headers() {
+    if (process.env.NODE_ENV === 'production') return []
     return [
       {
         source: '/(.*)',

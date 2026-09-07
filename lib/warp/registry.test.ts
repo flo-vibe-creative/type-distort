@@ -43,11 +43,11 @@ describe('왜곡 효과 목록', () => {
     expect(left.y - mid.y).toBeCloseTo(ctx.width / Math.PI, 6)
   })
 
-  it('슬라이더 정의의 키는 모두 해당 효과의 기본 파라미터에 존재한다', () => {
+  it('슬라이더 정의의 키는 모두 해당 효과의 파라미터에 존재한다', () => {
     WARP_TYPES.forEach((type: WarpType) => {
-      const effect = WARP_EFFECTS[type]
-      effect.sliders.forEach((slider) => {
-        expect(Object.keys(effect.defaults)).toContain(slider.key)
+      const parameterKeys = Object.keys(createWarp(type).params)
+      WARP_EFFECTS[type].sliders.forEach((slider) => {
+        expect(parameterKeys).toContain(slider.key)
       })
     })
   })

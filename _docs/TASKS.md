@@ -7,9 +7,9 @@
 | 구분 | 개수 |
 | --- | --- |
 | 전체 기능 | 10 |
-| ✅ 완료 | 6 |
+| ✅ 완료 | 7 |
 | 🔄 진행 중 | 0 |
-| ⏳ 예정 | 4 |
+| ⏳ 예정 | 3 |
 
 | # | 기능 | Status |
 | --- | --- | --- |
@@ -19,7 +19,7 @@
 | 4 | 이미지(PNG·JPEG) 가져오기 | ✅ 완료 |
 | 5 | 레이어 시스템 & 캔버스 화면 | ✅ 완료 |
 | 6 | 배치 편집 (이동·크기·회전) | ✅ 완료 |
-| 7 | 왜곡 편집 UI (핸들·슬라이더) | ⏳ 예정 |
+| 7 | 왜곡 편집 UI (핸들·슬라이더) | ✅ 완료 |
 | 8 | 내보내기 (SVG·PNG·JPEG) | ⏳ 예정 |
 | 9 | 되돌리기 & 자동 저장 | ⏳ 예정 |
 | 10 | 마무리 (에러 안내 · 레퍼런스 재현 검증) | ⏳ 예정 |
@@ -67,6 +67,9 @@
 | `hooks/useEditorKeyboard.ts` | 단축키 |
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
 | `components/editor/TransformHandles.tsx` | 배치 핸들 |
+| `lib/warp/handles.ts` | 왜곡 조작점 위치·드래그 계산 |
+| `hooks/useWarpInteraction.ts` | 왜곡 조작점 드래그 |
+| `components/editor/SliderField.tsx` | 슬라이더 |
 | `components/editor/WarpHandles.tsx` | 왜곡 핸들 (효과별 분기) |
 | `components/editor/InspectorPanel.tsx` | 우측 배치/왜곡 탭 |
 | `components/editor/ExportDialog.tsx` | 내보내기 옵션 창 |
@@ -148,16 +151,16 @@
 
 ## 기능 7. 왜곡 편집 UI (핸들·슬라이더)
 
-**Status:** ⏳ 예정
+**Status:** ✅ 완료
 **목표:** 레이어를 더블클릭하면 왜곡 모드로 들어가고, 핸들과 슬라이더로 네 효과를 실시간 조작할 수 있다.
 
-- [ ] 모드 전환 — 더블클릭/`왜곡` 탭으로 진입, `Esc`로 배치 모드 복귀 (핸들 색상 구분)
-- [ ] `InspectorPanel.tsx` 왜곡 탭 — 효과 선택 드롭다운 + 효과별 슬라이더 + 초기화 버튼
-- [ ] `WarpHandles.tsx` — 아크(호 곡선 + 양 끝점), 볼록(중심점 + 반경 원)
-- [ ] `WarpHandles.tsx` — 퍼스펙티브(모서리 4개), 메쉬(격자점 16개)
-- [ ] 핸들 ↔ 슬라이더 양방향 동기화
-- [ ] 드래그 중 낮은 정밀도 미리보기 → 놓으면 고정밀 재렌더
-- [ ] 네 효과를 모두 조작해보고 커밋
+- [x] 모드 전환 — 더블클릭/`왜곡` 탭으로 진입, `Esc`로 배치 모드 복귀 (핸들 색상 구분)
+- [x] `InspectorPanel.tsx` 왜곡 탭 — 효과 선택 드롭다운 + 효과별 슬라이더 + 초기화 버튼
+- [x] `WarpHandles.tsx` — 아크(호 곡선 + 양 끝점), 볼록(중심점 + 반경 원)
+- [x] `WarpHandles.tsx` — 퍼스펙티브(모서리 4개), 메쉬(격자점 16개)
+- [x] 핸들 ↔ 슬라이더 양방향 동기화
+- [x] 드래그 중 낮은 정밀도 미리보기 → 놓으면 고정밀 재렌더
+- [x] 네 효과를 모두 조작해보고 커밋
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

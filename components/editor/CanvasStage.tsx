@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LayerView } from '@/components/editor/LayerView'
 import { TransformHandles } from '@/components/editor/TransformHandles'
 import { Text } from '@/components/ui/Text'
+import { WarpHandles } from '@/components/editor/WarpHandles'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
+import { useWarpInteraction } from '@/hooks/useWarpInteraction'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import type { Point } from '@/lib/warp/types'
@@ -42,6 +44,8 @@ export function CanvasStage() {
   }, [])
 
   const interaction = useLayerInteraction(toCanvasPoint)
+  const warpInteraction = useWarpInteraction(toCanvasPoint)
+  const dragging = interaction.dragging || warpInteraction.dragging
 
   const fitToView = useCallback(() => {
     const container = containerRef.current
@@ -169,8 +173,9 @@ export function CanvasStage() {
   const stopPanning = () => setPanning(false)
 
   const selectedLayer = document.layers.find((layer) => layer.id === selectedLayerId) ?? null
-  const showTransformHandles =
-    selectedLayer !== null && selectedLayer.visible && mode === 'transform'
+  const editable = selectedLayer !== null && selectedLayer.visible
+  const showTransformHandles = editable && mode === 'transform'
+  const showWarpHandles = editable && mode === 'warp'
 
   const hasLayers = document.layers.length > 0
   const cursor = panning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
@@ -203,11 +208,11 @@ export function CanvasStage() {
             canvasWidth={document.canvas.width}
             canvasHeight={document.canvas.height}
             zoom={viewport.zoom}
-            dragging={interaction.dragging}
+            dragging={dragging}
           />
         ))}
 
-        {showTransformHandles && (
+        {(showTransformHandles || showWarpHandles) && selectedLayer && (
           <svg
             viewBox={overlayViewBox(document.canvas.width, document.canvas.height)}
             className="pointer-events-none absolute"
@@ -216,18 +221,29 @@ export function CanvasStage() {
               overflow: 'visible',
             }}
           >
-            <TransformHandles
-              layer={selectedLayer}
-              zoom={viewport.zoom}
-              onResizeStart={(handle: HandleId, event) => {
-                event.stopPropagation()
-                interaction.beginResize(selectedLayer.id, handle, toCanvasPoint(event))
-              }}
-              onRotateStart={(event) => {
-                event.stopPropagation()
-                interaction.beginRotate(selectedLayer.id, toCanvasPoint(event))
-              }}
-            />
+            {showTransformHandles ? (
+              <TransformHandles
+                layer={selectedLayer}
+                zoom={viewport.zoom}
+                onResizeStart={(handle: HandleId, event) => {
+                  event.stopPropagation()
+                  interaction.beginResize(selectedLayer.id, handle, toCanvasPoint(event))
+                }}
+                onRotateStart={(event) => {
+                  event.stopPropagation()
+                  interaction.beginRotate(selectedLayer.id, toCanvasPoint(event))
+                }}
+              />
+            ) : (
+              <WarpHandles
+                layer={selectedLayer}
+                zoom={viewport.zoom}
+                onHandleDown={(handleId, event) => {
+                  event.stopPropagation()
+                  warpInteraction.beginWarpDrag(selectedLayer.id, handleId)
+                }}
+              />
+            )}
           </svg>
         )}
       </div>

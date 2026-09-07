@@ -19,11 +19,10 @@ export interface SliderSpec {
   unit?: string
 }
 
-export interface WarpEffect<P> {
+export interface WarpEffectMeta {
   label: string
   /** 핸들 조작만으로 다루는 효과는 슬라이더가 비어 있을 수 있다 */
   sliders: SliderSpec[]
-  defaults: P
 }
 
 /** 레이어에 저장되는 왜곡 상태 (종류 + 파라미터) */
@@ -35,35 +34,31 @@ export type WarpState =
 
 export const WARP_TYPES: readonly WarpType[] = ['arc', 'mesh', 'perspective', 'bulge']
 
-export const WARP_EFFECTS = {
+export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
   arc: {
     label: '아크 / 링',
-    defaults: ARC_DEFAULT,
     sliders: [
       { key: 'angle', label: '각도', min: -360, max: 360, step: 1, unit: '°' },
       { key: 'strength', label: '세기', min: 0, max: 1, step: 0.01 },
     ],
-  } satisfies WarpEffect<ArcParams>,
+  },
   mesh: {
     label: '자유 메쉬',
-    defaults: MESH_DEFAULT,
     sliders: [],
-  } satisfies WarpEffect<MeshParams>,
+  },
   perspective: {
     label: '퍼스펙티브',
-    defaults: PERSPECTIVE_DEFAULT,
     sliders: [],
-  } satisfies WarpEffect<PerspectiveParams>,
+  },
   bulge: {
     label: '볼록 / 웨이브',
-    defaults: BULGE_DEFAULT,
     sliders: [
       { key: 'strength', label: '세기', min: -1, max: 1, step: 0.01 },
       { key: 'radius', label: '반경', min: 0.05, max: 2, step: 0.01 },
       { key: 'waves', label: '파동 수', min: 0, max: 8, step: 1 },
     ],
-  } satisfies WarpEffect<BulgeParams>,
-} as const
+  },
+}
 
 /** 기본 파라미터를 복제해 새 왜곡 상태를 만든다 (효과끼리 값이 섞이지 않도록) */
 export function createWarp(type: WarpType): WarpState {
