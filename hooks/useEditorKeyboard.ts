@@ -25,7 +25,7 @@ export function useEditorKeyboard() {
       if (isTypingTarget(event.target)) return
 
       const state = useEditorStore.getState()
-      const id = state.selectedLayerId
+      const ids = state.selectedLayerIds
 
       // Cmd/Ctrl + Z 되돌리기, Shift를 더하면 다시하기
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
@@ -36,45 +36,34 @@ export function useEditorKeyboard() {
       }
 
       if (event.key === 'Escape') {
-        // 골라 둔 조작점 → 왜곡 모드 → 레이어 선택 순서로 한 단계씩 빠져나온다
+        // 골라 둔 조작점 → 레이어 선택 순서로 한 단계씩 빠져나온다
         if (state.selectedWarpHandles.length > 0) state.clearWarpHandleSelection()
-        else if (state.mode === 'warp') state.setMode('transform')
-        else state.selectLayer(null)
+        else state.selectLayers([])
         return
       }
 
-      if (!id) return
+      if (ids.length === 0) return
 
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
-        state.removeLayer(id)
+        state.removeLayers(ids)
         return
       }
 
       const step = event.shiftKey ? NUDGE_FAST : NUDGE
-      const layer = state.document.layers.find((l) => l.id === id)
-      if (!layer) return
+      const offset = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[
+        event.key
+      ]
+      if (!offset) return
 
-      switch (event.key) {
-        case 'ArrowLeft':
-          event.preventDefault()
-          state.updateTransform(id, { x: layer.transform.x - step })
-          break
-        case 'ArrowRight':
-          event.preventDefault()
-          state.updateTransform(id, { x: layer.transform.x + step })
-          break
-        case 'ArrowUp':
-          event.preventDefault()
-          state.updateTransform(id, { y: layer.transform.y - step })
-          break
-        case 'ArrowDown':
-          event.preventDefault()
-          state.updateTransform(id, { y: layer.transform.y + step })
-          break
-        default:
-          break
+      event.preventDefault()
+      const updates: Record<string, { x: number; y: number }> = {}
+      for (const id of ids) {
+        const layer = state.document.layers.find((item) => item.id === id)
+        if (!layer) continue
+        updates[id] = { x: layer.transform.x + offset[0], y: layer.transform.y + offset[1] }
       }
+      state.updateTransforms(updates)
     }
 
     window.addEventListener('keydown', onKeyDown)

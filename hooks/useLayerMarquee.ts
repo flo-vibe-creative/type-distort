@@ -2,22 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Bounds } from '@/lib/geometry/bbox'
-import { handleIdsWithin, isDragMeaningful, rectFromPoints } from '@/lib/render/warpSelection'
+import { isDragMeaningful, layerIdsWithin, rectFromPoints } from '@/lib/render/marquee'
 import type { Point } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
 
 interface MarqueeState {
   start: Point
-  /** Shift를 누른 채 시작했다면 이미 골라 둔 점들에 더한다 */
+  /** Shift를 누른 채 시작했다면 이미 골라 둔 레이어에 더한다 */
   additive: boolean
   base: string[]
 }
 
 /**
- * 빈 곳에서 끌어 사각형을 그리면 그 안에 든 조작점들을 골라 준다.
+ * 빈 곳에서 끌어 사각형을 그리면 그 안에 걸친 레이어들을 골라 준다.
  * 끄는 동안 선택이 바로바로 보이고, 거의 움직이지 않았다면 그냥 누른 것으로 보아 선택을 놓아준다.
  */
-export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
+export function useLayerMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
   const [rect, setRect] = useState<Bounds | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
 
@@ -26,7 +26,7 @@ export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
     marqueeRef.current = {
       start: point,
       additive,
-      base: additive ? state.selectedWarpHandles : [],
+      base: additive ? state.selectedLayerIds : [],
     }
     setRect({ minX: point.x, minY: point.y, maxX: point.x, maxY: point.y })
   }, [])
@@ -36,13 +36,10 @@ export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
 
     const selectionFor = (area: Bounds) => {
       const marquee = marqueeRef.current
-      const state = useEditorStore.getState()
-      const layer = state.document.layers.find((item) => item.id === state.selectedLayerId)
-      if (!marquee || !layer) return null
-
-      const inside = handleIdsWithin(layer, area)
+      if (!marquee) return null
+      const inside = layerIdsWithin(useEditorStore.getState().document.layers, area)
       if (!marquee.additive) return inside
-      // 이미 골라 둔 것에 더하되 같은 점이 두 번 들어가지 않게 한다
+      // 이미 골라 둔 것에 더하되 같은 레이어가 두 번 들어가지 않게 한다
       return [...marquee.base, ...inside.filter((id) => !marquee.base.includes(id))]
     }
 
@@ -52,7 +49,7 @@ export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
       const area = rectFromPoints(marquee.start, toCanvasPoint(event))
       setRect(area)
       const selection = selectionFor(area)
-      if (selection) useEditorStore.getState().setWarpHandleSelection(selection)
+      if (selection) useEditorStore.getState().selectLayers(selection)
     }
 
     const onUp = (event: PointerEvent) => {
@@ -65,12 +62,12 @@ export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
       const state = useEditorStore.getState()
       // 거의 움직이지 않았다면 영역을 그린 것이 아니라 그냥 누른 것이다
       if (!isDragMeaningful(marquee.start, end, state.viewport.zoom)) {
-        if (!marquee.additive) state.clearWarpHandleSelection()
+        if (!marquee.additive) state.selectLayers([])
         return
       }
 
       const selection = selectionFor(rectFromPoints(marquee.start, end))
-      if (selection) state.setWarpHandleSelection(selection)
+      if (selection) state.selectLayers(selection)
     }
 
     window.addEventListener('pointermove', onMove)

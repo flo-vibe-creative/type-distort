@@ -22,12 +22,12 @@ function LayerKindIcon({ layer }: { layer: Layer }) {
 
 export function LayerPanel() {
   const layers = useEditorStore((state) => state.document.layers)
-  const selectedLayerId = useEditorStore((state) => state.selectedLayerId)
-  const selectLayer = useEditorStore((state) => state.selectLayer)
-  const setMode = useEditorStore((state) => state.setMode)
+  const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
+  const selectLayers = useEditorStore((state) => state.selectLayers)
+  const toggleLayerSelection = useEditorStore((state) => state.toggleLayerSelection)
   const toggleLayerVisibility = useEditorStore((state) => state.toggleLayerVisibility)
   const reorderLayer = useEditorStore((state) => state.reorderLayer)
-  const removeLayer = useEditorStore((state) => state.removeLayer)
+  const removeLayers = useEditorStore((state) => state.removeLayers)
 
   // 배열 뒤쪽이 화면에서 위에 그려지므로 목록은 뒤집어 보여준다
   const ordered = [...layers].reverse()
@@ -39,7 +39,9 @@ export function LayerPanel() {
           레이어
         </Text>
         <Text variant="caption12" as="span" color="text-fg-tertiary">
-          {layers.length}개
+          {selectedLayerIds.length > 1
+            ? `${selectedLayerIds.length}/${layers.length}개 선택`
+            : `${layers.length}개`}
         </Text>
       </div>
 
@@ -52,21 +54,21 @@ export function LayerPanel() {
       ) : (
         <ul className="flex-1 overflow-y-auto py-1">
           {ordered.map((layer) => {
-            const selected = layer.id === selectedLayerId
+            const selected = selectedLayerIds.includes(layer.id)
             return (
               <li key={layer.id}>
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => selectLayer(layer.id)}
-                  onDoubleClick={() => {
-                    selectLayer(layer.id)
-                    setMode('warp')
+                  onClick={(event) => {
+                    // Shift를 누른 채 누르면 골라 둔 것에 더하거나 뺀다
+                    if (event.shiftKey) toggleLayerSelection(layer.id)
+                    else selectLayers([layer.id])
                   }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      selectLayer(layer.id)
+                      selectLayers([layer.id])
                     }
                   }}
                   className={`group flex w-full items-center gap-2 px-3 py-2 text-left ${
@@ -116,7 +118,7 @@ export function LayerPanel() {
                       title="삭제"
                       onClick={(event) => {
                         event.stopPropagation()
-                        removeLayer(layer.id)
+                        removeLayers([layer.id])
                       }}
                       className="px-1 text-fg-tertiary hover:text-semantic-error"
                     >

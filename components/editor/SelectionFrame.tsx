@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react'
 import type { Layer } from '@/lib/document/types'
-import { warpedBounds } from '@/lib/render/layerBounds'
+import type { Bounds } from '@/lib/geometry/bbox'
+import { frameBounds } from '@/lib/render/canvasBounds'
 import {
   HANDLE_IDS,
   frameCorners,
@@ -16,6 +17,7 @@ import type { Point } from '@/lib/warp/types'
 const HANDLE_SIZE = 9
 /** 모서리 바깥 이 정도까지가 회전 영역이다 (px) */
 const ROTATE_ZONE = 18
+const ACCENT = '#3f3fff'
 
 const CURSORS: Record<HandleId, string> = {
   nw: 'nwse-resize',
@@ -28,41 +30,46 @@ const CURSORS: Record<HandleId, string> = {
   w: 'ew-resize',
 }
 
-interface TransformHandlesProps {
+interface SelectionFrameProps {
   layer: Layer
   zoom: number
+  /** 여러 레이어를 골랐을 때는 기준이 하나가 아니라 크기·회전 핸들을 두지 않는다 */
+  showHandles: boolean
   onResizeStart: (handle: HandleId, event: React.PointerEvent) => void
   onRotateStart: (event: React.PointerEvent) => void
 }
 
 /**
- * 선택된 레이어의 배치 핸들.
+ * 고른 레이어를 감싸는 선택 상자.
  * 캔버스 좌표로 그리되, 확대해도 핸들 크기는 화면에서 일정하게 유지한다.
  */
-export function TransformHandles({
+export function SelectionFrame({
   layer,
   zoom,
+  showHandles,
   onResizeStart,
   onRotateStart,
-}: TransformHandlesProps) {
-  const bounds = useMemo(() => warpedBounds(layer), [layer])
+}: SelectionFrameProps) {
+  const bounds = useMemo(() => frameBounds(layer, zoom), [layer, zoom])
   const corners = useMemo(() => frameCorners(layer.transform, bounds), [layer.transform, bounds])
 
   const size = HANDLE_SIZE / zoom
   const rotateZone = ROTATE_ZONE / zoom
   const outline = corners.map((p) => `${p.x},${p.y}`).join(' ')
 
-  const handlePoints: { id: HandleId; point: Point }[] = HANDLE_IDS.map((id) => ({
-    id,
-    point: localToCanvas(layer.transform, handleLocalPoint(bounds, id)),
-  }))
+  const handlePoints: { id: HandleId; point: Point }[] = showHandles
+    ? HANDLE_IDS.map((id) => ({
+        id,
+        point: localToCanvas(layer.transform, handleLocalPoint(bounds, id)),
+      }))
+    : []
 
   return (
     <g>
       <polygon
         points={outline}
         fill="none"
-        stroke="#3f3fff"
+        stroke={ACCENT}
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
       />
@@ -87,7 +94,7 @@ export function TransformHandles({
             width={size}
             height={size}
             fill="#ffffff"
-            stroke="#3f3fff"
+            stroke={ACCENT}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
             style={{ cursor: CURSORS[id], pointerEvents: 'auto' }}
@@ -96,5 +103,22 @@ export function TransformHandles({
         </g>
       ))}
     </g>
+  )
+}
+
+/** 여러 레이어를 골랐을 때 전체를 감싸는 사각형 */
+export function MultiSelectionOutline({ bounds }: { bounds: Bounds }) {
+  return (
+    <rect
+      x={bounds.minX}
+      y={bounds.minY}
+      width={bounds.maxX - bounds.minX}
+      height={bounds.maxY - bounds.minY}
+      fill="none"
+      stroke={ACCENT}
+      strokeWidth={1}
+      strokeDasharray="5 4"
+      vectorEffect="non-scaling-stroke"
+    />
   )
 }

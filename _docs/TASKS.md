@@ -72,13 +72,13 @@
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
 | `hooks/useNumericDraft.ts` | 숫자 입력 공통 동작 |
 | `lib/format/number.ts` | 숫자 표시·해석 |
-| `components/editor/TransformHandles.tsx` | 배치 핸들 |
+| `components/editor/SelectionFrame.tsx` | 선택 상자와 크기·회전 핸들 |
 | `lib/warp/handles.ts` | 왜곡 조작점 위치·드래그 계산 |
 | `lib/svg/glyphs.ts` | 도형을 글자 단위로 나누기 |
 | `lib/render/letterSpacing.ts` | 자간 적용 |
 | `lib/render/layerSource.ts` | 자간을 반영한 도형·왜곡 기준 크기 |
-| `lib/render/warpSelection.ts` | 영역 안 조작점 골라내기 |
-| `hooks/useWarpMarquee.ts` | 드래그로 영역 그려 선택 |
+| `lib/render/marquee.ts` | 영역 안 레이어 골라내기 |
+| `hooks/useLayerMarquee.ts` | 드래그로 영역 그려 레이어 선택 |
 | `hooks/useWarpInteraction.ts` | 왜곡 조작점 드래그 |
 | `components/editor/SliderField.tsx` | 슬라이더 |
 | `components/editor/WarpHandles.tsx` | 왜곡 핸들 (효과별 분기) |
@@ -177,6 +177,7 @@
 - [x] 슬라이더 옆 숫자 직접 입력 — 단위 포함 입력, 범위 보정, 방향키 조절
 - [x] 조작점 여러 개 선택 — Shift로 더하고 빼며, 고른 점들을 함께 이동 (메쉬·퍼스펙티브)
 - [x] 드래그로 영역을 그려 여러 조작점 한 번에 선택
+- [x] 배치/왜곡 탭을 없애고 한 패널로 통합 — 클릭 즉시 이동, 빈 곳 드래그로 레이어 여러 개 선택
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

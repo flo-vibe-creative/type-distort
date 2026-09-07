@@ -33,7 +33,7 @@ describe('레이어 추가', () => {
     const layer = fakeLayer('WOW')
     store().addLayers([layer])
     expect(store().document.layers).toHaveLength(1)
-    expect(store().selectedLayerId).toBe(layer.id)
+    expect(store().selectedLayerIds).toEqual([layer.id])
   })
 
   it('캔버스 가운데에 놓는다', () => {
@@ -51,11 +51,11 @@ describe('레이어 추가', () => {
     expect(b.transform.y).toBeGreaterThan(a.transform.y)
   })
 
-  it('여러 개를 한 번에 넣으면 순서대로 쌓이고 마지막 것이 선택된다', () => {
+  it('여러 개를 한 번에 넣으면 순서대로 쌓이고 넣은 것들이 모두 선택된다', () => {
     const layers = [fakeLayer('A'), fakeLayer('B'), fakeLayer('C')]
     store().addLayers(layers)
     expect(store().document.layers.map((l) => l.name)).toEqual(['A', 'B', 'C'])
-    expect(store().selectedLayerId).toBe(layers[2].id)
+    expect(store().selectedLayerIds).toEqual(layers.map((l) => l.id))
   })
 })
 
@@ -63,16 +63,23 @@ describe('레이어 목록 다루기', () => {
   it('삭제하면 목록에서 빠지고 선택이 다른 레이어로 넘어간다', () => {
     const [a, b] = [fakeLayer('A'), fakeLayer('B')]
     store().addLayers([a, b])
-    store().removeLayer(b.id)
+    store().removeLayers([b.id])
     expect(store().document.layers.map((l) => l.id)).toEqual([a.id])
-    expect(store().selectedLayerId).toBe(a.id)
+    expect(store().selectedLayerIds).toEqual([a.id])
   })
 
   it('마지막 레이어를 지우면 선택이 비워진다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
-    store().removeLayer(a.id)
-    expect(store().selectedLayerId).toBeNull()
+    store().removeLayers([a.id])
+    expect(store().selectedLayerIds).toEqual([])
+  })
+
+  it('골라 둔 레이어 여러 개를 한 번에 지운다', () => {
+    const [a, b, c] = [fakeLayer('A'), fakeLayer('B'), fakeLayer('C')]
+    store().addLayers([a, b, c])
+    store().removeLayers([a.id, c.id])
+    expect(store().document.layers.map((l) => l.name)).toEqual(['B'])
   })
 
   it('숨기기를 켜고 끌 수 있다', () => {
@@ -173,17 +180,62 @@ describe('화면 이동과 확대', () => {
   })
 })
 
-describe('편집 모드', () => {
-  it('기본은 배치 모드다', () => {
-    expect(store().mode).toBe('transform')
+describe('레이어 선택', () => {
+  it('여러 개를 골라 둘 수 있다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().selectLayers([a.id, b.id])
+    expect(store().selectedLayerIds).toEqual([a.id, b.id])
   })
 
-  it('왜곡 모드로 바꿨다가 선택을 해제하면 배치 모드로 돌아온다', () => {
+  it('Shift로 누르듯 하나씩 더하고 뺀다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().selectLayers([a.id])
+    store().toggleLayerSelection(b.id)
+    expect(store().selectedLayerIds).toEqual([a.id, b.id])
+    store().toggleLayerSelection(a.id)
+    expect(store().selectedLayerIds).toEqual([b.id])
+  })
+
+  it('선택이 바뀌면 골라 둔 조작점도 비워진다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
-    store().setMode('warp')
-    store().selectLayer(null)
-    expect(store().mode).toBe('transform')
+    store().setWarpHandleSelection(['mesh-1'])
+    store().selectLayers([a.id])
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+})
+
+describe('여러 레이어 함께 옮기기', () => {
+  it('한 번에 여러 레이어의 배치를 바꾼다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().updateTransforms({ [a.id]: { x: 10 }, [b.id]: { x: 20, y: 5 } })
+    expect(store().document.layers[0].transform.x).toBe(10)
+    expect(store().document.layers[1].transform).toMatchObject({ x: 20, y: 5 })
+  })
+
+  it('함께 옮긴 것도 되돌리기 한 단계로 묶인다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    const before = store().document.layers.map((l) => l.transform.x)
+
+    store().beginGesture()
+    for (let step = 1; step <= 5; step += 1) {
+      store().updateTransforms({ [a.id]: { x: before[0] + step }, [b.id]: { x: before[1] + step } })
+    }
+    store().endGesture()
+
+    store().undo()
+    expect(store().document.layers.map((l) => l.transform.x)).toEqual(before)
+  })
+
+  it('빈 목록을 넘기면 아무 일도 일어나지 않는다', () => {
+    store().addLayers([fakeLayer('A')])
+    const snapshot = store().document
+    store().updateTransforms({})
+    expect(store().document).toBe(snapshot)
   })
 })
 
@@ -330,7 +382,7 @@ describe('왜곡 조작점 선택', () => {
     const [a, b] = [fakeLayer('A'), fakeLayer('B')]
     store().addLayers([a, b])
     store().setWarpHandleSelection(['mesh-5'])
-    store().selectLayer(a.id)
+    store().selectLayers([a.id])
     expect(store().selectedWarpHandles).toEqual([])
   })
 
@@ -339,12 +391,6 @@ describe('왜곡 조작점 선택', () => {
     store().addLayers([a])
     store().setWarpHandleSelection(['mesh-5'])
     store().setWarpType(a.id, 'perspective')
-    expect(store().selectedWarpHandles).toEqual([])
-  })
-
-  it('모드를 바꾸면 선택이 비워진다', () => {
-    store().setWarpHandleSelection(['mesh-5'])
-    store().setMode('transform')
     expect(store().selectedWarpHandles).toEqual([])
   })
 

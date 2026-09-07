@@ -1,13 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayerView } from '@/components/editor/LayerView'
-import { TransformHandles } from '@/components/editor/TransformHandles'
-import { Text } from '@/components/ui/Text'
+import { MultiSelectionOutline, SelectionFrame } from '@/components/editor/SelectionFrame'
 import { WarpHandles } from '@/components/editor/WarpHandles'
+import { Text } from '@/components/ui/Text'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
+import { useLayerMarquee } from '@/hooks/useLayerMarquee'
 import { useWarpInteraction } from '@/hooks/useWarpInteraction'
-import { useWarpMarquee } from '@/hooks/useWarpMarquee'
+import { boundsOfLayers } from '@/lib/render/canvasBounds'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import type { Point } from '@/lib/warp/types'
@@ -22,12 +23,11 @@ export function CanvasStage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const document = useEditorStore((state) => state.document)
   const viewport = useEditorStore((state) => state.viewport)
-  const mode = useEditorStore((state) => state.mode)
-  const selectedLayerId = useEditorStore((state) => state.selectedLayerId)
+  const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
   const selectedWarpHandles = useEditorStore((state) => state.selectedWarpHandles)
   const setViewport = useEditorStore((state) => state.setViewport)
-  const selectLayer = useEditorStore((state) => state.selectLayer)
-  const setMode = useEditorStore((state) => state.setMode)
+  const selectLayers = useEditorStore((state) => state.selectLayers)
+  const toggleLayerSelection = useEditorStore((state) => state.toggleLayerSelection)
 
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [panning, setPanning] = useState(false)
@@ -48,7 +48,7 @@ export function CanvasStage() {
 
   const interaction = useLayerInteraction(toCanvasPoint)
   const warpInteraction = useWarpInteraction(toCanvasPoint)
-  const marquee = useWarpMarquee(toCanvasPoint)
+  const marquee = useLayerMarquee(toCanvasPoint)
   const dragging = interaction.dragging || warpInteraction.dragging
 
   const fitToView = useCallback(() => {
@@ -149,32 +149,20 @@ export function CanvasStage() {
     const layerId = hit?.getAttribute('data-layer-id') ?? null
     const state = useEditorStore.getState()
 
-    // 왜곡 모드에서 조작점 바깥을 누르면 영역을 그려 여러 점을 고른다
-    const editingWarp = state.mode === 'warp' && state.selectedLayerId !== null
-    if (editingWarp && (!layerId || layerId === state.selectedLayerId)) {
+    // 빈 곳에서 끌면 사각형을 그려 레이어 여러 개를 고른다
+    if (!layerId) {
       marquee.beginMarquee(toCanvasPoint(event), event.shiftKey)
       return
     }
 
-    if (!layerId) {
-      selectLayer(null)
+    if (event.shiftKey) {
+      toggleLayerSelection(layerId)
       return
     }
 
-    // 조작점이 아닌 곳을 눌렀으므로 골라 둔 점들은 selectLayer가 함께 놓아준다
-    selectLayer(layerId)
-    // 배치 모드에서만 곧바로 끌어 옮긴다 (왜곡 모드에서는 핸들 조작이 우선이다)
-    if (useEditorStore.getState().mode === 'transform') {
-      interaction.beginMove(layerId, toCanvasPoint(event))
-    }
-  }
-
-  const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const hit = (event.target as HTMLElement).closest('[data-layer-id]')
-    const layerId = hit?.getAttribute('data-layer-id')
-    if (!layerId) return
-    selectLayer(layerId)
-    setMode('warp')
+    // 이미 여러 개를 골라 둔 상태에서 그중 하나를 누르면 선택을 유지한 채 함께 옮긴다
+    if (!state.selectedLayerIds.includes(layerId)) selectLayers([layerId])
+    interaction.beginMove(layerId, toCanvasPoint(event))
   }
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -184,10 +172,15 @@ export function CanvasStage() {
 
   const stopPanning = () => setPanning(false)
 
-  const selectedLayer = document.layers.find((layer) => layer.id === selectedLayerId) ?? null
-  const editable = selectedLayer !== null && selectedLayer.visible
-  const showTransformHandles = editable && mode === 'transform'
-  const showWarpHandles = editable && mode === 'warp'
+  const selectedLayers = useMemo(
+    () => document.layers.filter((layer) => selectedLayerIds.includes(layer.id)),
+    [document.layers, selectedLayerIds]
+  )
+  const singleSelected = selectedLayers.length === 1 ? selectedLayers[0] : null
+  const multiBounds = useMemo(
+    () => (selectedLayers.length > 1 ? boundsOfLayers(selectedLayers) : null),
+    [selectedLayers]
+  )
 
   const hasLayers = document.layers.length > 0
   const cursor = panning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
@@ -201,7 +194,6 @@ export function CanvasStage() {
       onPointerMove={onPointerMove}
       onPointerUp={stopPanning}
       onPointerCancel={stopPanning}
-      onDoubleClick={onDoubleClick}
     >
       <div
         className="absolute left-0 top-0 shadow-[0_2px_16px_rgba(0,0,0,0.08)]"
@@ -224,55 +216,60 @@ export function CanvasStage() {
           />
         ))}
 
-        {(showTransformHandles || showWarpHandles) && selectedLayer && (
-          <svg
-            viewBox={overlayViewBox(document.canvas.width, document.canvas.height)}
-            className="pointer-events-none absolute"
-            style={{
-              ...overlayStyle(document.canvas.width, document.canvas.height),
-              overflow: 'visible',
-            }}
-          >
-            {marquee.marqueeRect && (
-              <rect
-                x={marquee.marqueeRect.minX}
-                y={marquee.marqueeRect.minY}
-                width={marquee.marqueeRect.maxX - marquee.marqueeRect.minX}
-                height={marquee.marqueeRect.maxY - marquee.marqueeRect.minY}
-                fill="rgba(123, 63, 255, 0.08)"
-                stroke="#7b3fff"
-                strokeWidth={1}
-                strokeDasharray="4 3"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
+        <svg
+          viewBox={overlayViewBox(document.canvas.width, document.canvas.height)}
+          className="pointer-events-none absolute"
+          style={{
+            ...overlayStyle(document.canvas.width, document.canvas.height),
+            overflow: 'visible',
+          }}
+        >
+          {marquee.marqueeRect && (
+            <rect
+              x={marquee.marqueeRect.minX}
+              y={marquee.marqueeRect.minY}
+              width={marquee.marqueeRect.maxX - marquee.marqueeRect.minX}
+              height={marquee.marqueeRect.maxY - marquee.marqueeRect.minY}
+              fill="rgba(63, 63, 255, 0.08)"
+              stroke="#3f3fff"
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
 
-            {showTransformHandles ? (
-              <TransformHandles
-                layer={selectedLayer}
-                zoom={viewport.zoom}
-                onResizeStart={(handle: HandleId, event) => {
-                  event.stopPropagation()
-                  interaction.beginResize(selectedLayer.id, handle, toCanvasPoint(event))
-                }}
-                onRotateStart={(event) => {
-                  event.stopPropagation()
-                  interaction.beginRotate(selectedLayer.id, toCanvasPoint(event))
-                }}
-              />
-            ) : (
-              <WarpHandles
-                layer={selectedLayer}
-                zoom={viewport.zoom}
-                selectedHandleIds={selectedWarpHandles}
-                onHandleDown={(handleId, event) => {
-                  event.stopPropagation()
-                  warpInteraction.beginWarpDrag(selectedLayer.id, handleId, event.shiftKey)
-                }}
-              />
-            )}
-          </svg>
-        )}
+          {multiBounds && <MultiSelectionOutline bounds={multiBounds} />}
+
+          {selectedLayers.map((layer) => (
+            <SelectionFrame
+              key={layer.id}
+              layer={layer}
+              zoom={viewport.zoom}
+              showHandles={selectedLayers.length === 1}
+              onResizeStart={(handle: HandleId, event) => {
+                event.stopPropagation()
+                interaction.beginResize(layer.id, handle, toCanvasPoint(event))
+              }}
+              onRotateStart={(event) => {
+                event.stopPropagation()
+                interaction.beginRotate(layer.id, toCanvasPoint(event))
+              }}
+            />
+          ))}
+
+          {/* 왜곡 조작점은 하나만 골랐을 때, 선택 상자 위에 그려 먼저 잡히게 한다 */}
+          {singleSelected && singleSelected.visible && (
+            <WarpHandles
+              layer={singleSelected}
+              zoom={viewport.zoom}
+              selectedHandleIds={selectedWarpHandles}
+              onHandleDown={(handleId, event) => {
+                event.stopPropagation()
+                warpInteraction.beginWarpDrag(singleSelected.id, handleId, event.shiftKey)
+              }}
+            />
+          )}
+        </svg>
       </div>
 
       {!hasLayers && (

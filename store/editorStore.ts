@@ -20,8 +20,6 @@ export const MAX_ZOOM = 64
 /** 크기를 0으로 만들면 형태가 사라져 되돌릴 수 없으므로 최소값을 둔다 */
 export const MIN_SCALE = 0.01
 
-export type EditorMode = 'transform' | 'warp'
-
 /** 부호(뒤집기)는 유지하면서 크기가 0이 되지 않게 막는다 */
 function clampScale(value: number): number {
   if (!Number.isFinite(value) || value === 0) return MIN_SCALE
@@ -37,8 +35,8 @@ export interface Viewport {
 
 interface EditorState {
   document: EditorDocument
-  selectedLayerId: string | null
-  mode: EditorMode
+  /** 고른 레이어들. 여러 개를 골라 함께 옮길 수 있다. */
+  selectedLayerIds: string[]
   viewport: Viewport
   /** 되돌리기용 이전 상태들 (뒤쪽이 가장 최근) */
   past: EditorDocument[]
@@ -54,12 +52,14 @@ interface EditorState {
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
-  removeLayer: (id: string) => void
-  selectLayer: (id: string | null) => void
-  setMode: (mode: EditorMode) => void
+  removeLayers: (ids: readonly string[]) => void
+  selectLayers: (ids: readonly string[]) => void
+  toggleLayerSelection: (id: string) => void
   toggleLayerVisibility: (id: string) => void
   reorderLayer: (id: string, direction: 'up' | 'down') => void
   updateTransform: (id: string, patch: Partial<LayerTransform>) => void
+  /** 여러 레이어의 배치를 한 번에 바꾼다 (함께 옮길 때) */
+  updateTransforms: (updates: Record<string, Partial<LayerTransform>>) => void
   setWarpType: (id: string, type: WarpType) => void
   updateWarpParams: (id: string, patch: Record<string, unknown>) => void
   setLetterSpacing: (id: string, spacing: number) => void
@@ -116,8 +116,7 @@ function mapLayer(
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   document: emptyDocument(),
-  selectedLayerId: null,
-  mode: 'transform',
+  selectedLayerIds: [],
   viewport: { zoom: 1, panX: 0, panY: 0 },
   past: [],
   future: [],
@@ -127,8 +126,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   reset: () =>
     set({
       document: emptyDocument(),
-      selectedLayerId: null,
-      mode: 'transform',
+      selectedLayerIds: [],
       viewport: { zoom: 1, panX: 0, panY: 0 },
       past: [],
       future: [],
@@ -157,38 +155,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       return {
         ...withHistory(state, { ...state.document, layers: [...layers, ...placed] }),
-        selectedLayerId: placed[placed.length - 1].id,
-      }
-    }),
-
-  removeLayer: (id) =>
-    set((state) => {
-      const index = state.document.layers.findIndex((layer) => layer.id === id)
-      if (index === -1) return {}
-
-      const layers = state.document.layers.filter((layer) => layer.id !== id)
-      // 지운 자리에 남는 이웃으로 선택을 넘겨 흐름이 끊기지 않게 한다
-      const nextSelected =
-        state.selectedLayerId === id
-          ? (layers[index] ?? layers[index - 1] ?? null)?.id ?? null
-          : state.selectedLayerId
-
-      return {
-        ...withHistory(state, { ...state.document, layers }),
-        selectedLayerId: nextSelected,
-        mode: nextSelected ? state.mode : 'transform',
+        selectedLayerIds: placed.map((layer) => layer.id),
         selectedWarpHandles: [],
       }
     }),
 
-  selectLayer: (id) =>
+  removeLayers: (ids) =>
+    set((state) => {
+      const removing = new Set(ids)
+      const firstIndex = state.document.layers.findIndex((layer) => removing.has(layer.id))
+      if (firstIndex === -1) return {}
+
+      const layers = state.document.layers.filter((layer) => !removing.has(layer.id))
+      // 지운 자리에 남는 이웃으로 선택을 넘겨 흐름이 끊기지 않게 한다
+      const neighbour = layers[firstIndex] ?? layers[firstIndex - 1] ?? null
+
+      return {
+        ...withHistory(state, { ...state.document, layers }),
+        selectedLayerIds: neighbour ? [neighbour.id] : [],
+        selectedWarpHandles: [],
+      }
+    }),
+
+  selectLayers: (ids) => set({ selectedLayerIds: [...ids], selectedWarpHandles: [] }),
+
+  toggleLayerSelection: (id) =>
     set((state) => ({
-      selectedLayerId: id,
-      mode: id ? state.mode : 'transform',
+      selectedLayerIds: state.selectedLayerIds.includes(id)
+        ? state.selectedLayerIds.filter((item) => item !== id)
+        : [...state.selectedLayerIds, id],
       selectedWarpHandles: [],
     })),
-
-  setMode: (mode) => set({ mode, selectedWarpHandles: [] }),
 
   toggleLayerVisibility: (id) =>
     set((state) => mapLayer(state, id, (layer) => ({ ...layer, visible: !layer.visible }))),
@@ -221,6 +218,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }
       })
     ),
+
+  updateTransforms: (updates) =>
+    set((state) => {
+      const ids = Object.keys(updates)
+      if (ids.length === 0) return {}
+      return withHistory(state, {
+        ...state.document,
+        layers: state.document.layers.map((layer) => {
+          const patch = updates[layer.id]
+          if (!patch) return layer
+          const merged = { ...layer.transform, ...patch }
+          return {
+            ...layer,
+            transform: {
+              ...merged,
+              scaleX: clampScale(merged.scaleX),
+              scaleY: clampScale(merged.scaleY),
+            },
+          }
+        }),
+      })
+    }),
 
   setWarpType: (id, type) =>
     set((state) => ({
@@ -354,8 +373,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       historyPaused: false,
-      selectedLayerId: null,
-      mode: 'transform',
+      selectedLayerIds: [],
       selectedWarpHandles: [],
     }),
 }))
