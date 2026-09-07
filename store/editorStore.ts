@@ -1,10 +1,5 @@
 import { create } from 'zustand'
-import type {
-  CanvasSettings,
-  EditorDocument,
-  Layer,
-  LayerTransform,
-} from '@/lib/document/types'
+import type { CanvasSettings, EditorDocument, Layer, LayerTransform } from '@/lib/document/types'
 import { sourceSize } from '@/lib/document/types'
 import { contentBounds } from '@/lib/render/canvasBounds'
 import { createWarp, type WarpState } from '@/lib/warp/registry'
@@ -16,6 +11,9 @@ export const DEFAULT_CANVAS: CanvasSettings = { width: 1200, height: 800, backgr
 const CASCADE_STEP = 24
 /** 어긋난 레이어가 캔버스 밖으로 나가지 않도록 되돌아오는 주기 */
 const CASCADE_WRAP = 8
+
+/** 되돌리기로 거슬러 갈 수 있는 단계 수 */
+export const HISTORY_LIMIT = 50
 
 export const MIN_ZOOM = 0.05
 export const MAX_ZOOM = 64
@@ -42,6 +40,12 @@ interface EditorState {
   selectedLayerId: string | null
   mode: EditorMode
   viewport: Viewport
+  /** 되돌리기용 이전 상태들 (뒤쪽이 가장 최근) */
+  past: EditorDocument[]
+  /** 되돌린 뒤 다시 갈 수 있는 상태들 */
+  future: EditorDocument[]
+  /** 드래그하는 동안에는 기록을 쌓지 않는다 */
+  historyPaused: boolean
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
@@ -60,10 +64,46 @@ interface EditorState {
   setZoom: (zoom: number) => void
   panBy: (dx: number, dy: number) => void
   setViewport: (viewport: Partial<Viewport>) => void
+
+  /** 드래그 한 번을 되돌리기 한 단계로 묶는다 */
+  beginGesture: () => void
+  endGesture: () => void
+  undo: () => void
+  redo: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
+  /** 저장본에서 문서를 통째로 되살린다 (되돌리기 기록은 비운다) */
+  replaceDocument: (document: EditorDocument) => void
 }
 
 function emptyDocument(): EditorDocument {
   return { canvas: { ...DEFAULT_CANVAS }, layers: [] }
+}
+
+/**
+ * 문서를 바꾸면서 되돌리기 기록도 함께 남긴다.
+ * 드래그 중에는 기록을 멈춰, 한 번의 조작이 한 단계로 묶이게 한다.
+ */
+function withHistory(state: EditorState, document: EditorDocument) {
+  if (state.historyPaused) return { document }
+  return {
+    document,
+    past: [...state.past, state.document].slice(-HISTORY_LIMIT),
+    future: [],
+  }
+}
+
+/** 특정 레이어만 바꾸는 흔한 형태를 한곳에 모은다 */
+function mapLayer(
+  state: EditorState,
+  id: string,
+  change: (layer: Layer) => Layer
+): Partial<EditorState> {
+  if (!state.document.layers.some((layer) => layer.id === id)) return {}
+  return withHistory(state, {
+    ...state.document,
+    layers: state.document.layers.map((layer) => (layer.id === id ? change(layer) : layer)),
+  })
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -71,6 +111,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedLayerId: null,
   mode: 'transform',
   viewport: { zoom: 1, panX: 0, panY: 0 },
+  past: [],
+  future: [],
+  historyPaused: false,
 
   reset: () =>
     set({
@@ -78,165 +121,137 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedLayerId: null,
       mode: 'transform',
       viewport: { zoom: 1, panX: 0, panY: 0 },
+      past: [],
+      future: [],
+      historyPaused: false,
     }),
 
-  addLayers: (incoming) => {
-    if (incoming.length === 0) return
-    const { document } = get()
-    const { canvas } = document
+  addLayers: (incoming) =>
+    set((state) => {
+      if (incoming.length === 0) return {}
+      const { canvas, layers } = state.document
 
-    const placed = incoming.map((layer, index) => {
-      const order = document.layers.length + index
-      const offset = (order % CASCADE_WRAP) * CASCADE_STEP
-      const size = sourceSize(layer.source)
+      const placed = incoming.map((layer, index) => {
+        const order = layers.length + index
+        const offset = (order % CASCADE_WRAP) * CASCADE_STEP
+        const size = sourceSize(layer.source)
+        return {
+          ...layer,
+          transform: {
+            ...layer.transform,
+            x: Math.round((canvas.width - size.width) / 2) + offset,
+            y: Math.round((canvas.height - size.height) / 2) + offset,
+          },
+        }
+      })
+
       return {
-        ...layer,
-        transform: {
-          ...layer.transform,
-          x: Math.round((canvas.width - size.width) / 2) + offset,
-          y: Math.round((canvas.height - size.height) / 2) + offset,
-        },
+        ...withHistory(state, { ...state.document, layers: [...layers, ...placed] }),
+        selectedLayerId: placed[placed.length - 1].id,
       }
-    })
+    }),
 
-    set({
-      document: { ...document, layers: [...document.layers, ...placed] },
-      selectedLayerId: placed[placed.length - 1].id,
-    })
-  },
+  removeLayer: (id) =>
+    set((state) => {
+      const index = state.document.layers.findIndex((layer) => layer.id === id)
+      if (index === -1) return {}
 
-  removeLayer: (id) => {
-    const { document, selectedLayerId } = get()
-    const index = document.layers.findIndex((layer) => layer.id === id)
-    if (index === -1) return
+      const layers = state.document.layers.filter((layer) => layer.id !== id)
+      // 지운 자리에 남는 이웃으로 선택을 넘겨 흐름이 끊기지 않게 한다
+      const nextSelected =
+        state.selectedLayerId === id
+          ? (layers[index] ?? layers[index - 1] ?? null)?.id ?? null
+          : state.selectedLayerId
 
-    const layers = document.layers.filter((layer) => layer.id !== id)
-    // 지운 자리에 남는 이웃으로 선택을 넘겨 흐름이 끊기지 않게 한다
-    const nextSelected =
-      selectedLayerId === id ? (layers[index] ?? layers[index - 1] ?? null)?.id ?? null : selectedLayerId
+      return {
+        ...withHistory(state, { ...state.document, layers }),
+        selectedLayerId: nextSelected,
+        mode: nextSelected ? state.mode : 'transform',
+      }
+    }),
 
-    set({
-      document: { ...document, layers },
-      selectedLayerId: nextSelected,
-      mode: nextSelected ? get().mode : 'transform',
-    })
-  },
-
-  selectLayer: (id) => set({ selectedLayerId: id, mode: id ? get().mode : 'transform' }),
+  selectLayer: (id) => set((state) => ({ selectedLayerId: id, mode: id ? state.mode : 'transform' })),
 
   setMode: (mode) => set({ mode }),
 
   toggleLayerVisibility: (id) =>
-    set((state) => ({
-      document: {
-        ...state.document,
-        layers: state.document.layers.map((layer) =>
-          layer.id === id ? { ...layer, visible: !layer.visible } : layer
-        ),
-      },
-    })),
+    set((state) => mapLayer(state, id, (layer) => ({ ...layer, visible: !layer.visible }))),
 
-  reorderLayer: (id, direction) => {
-    const { document } = get()
-    const index = document.layers.findIndex((layer) => layer.id === id)
-    if (index === -1) return
+  reorderLayer: (id, direction) =>
+    set((state) => {
+      const index = state.document.layers.findIndex((layer) => layer.id === id)
+      if (index === -1) return {}
 
-    // 배열 뒤쪽이 화면에서 위에 그려지므로 '위로'는 인덱스를 키우는 방향이다
-    const target = direction === 'up' ? index + 1 : index - 1
-    if (target < 0 || target >= document.layers.length) return
+      // 배열 뒤쪽이 화면에서 위에 그려지므로 '위로'는 인덱스를 키우는 방향이다
+      const target = direction === 'up' ? index + 1 : index - 1
+      if (target < 0 || target >= state.document.layers.length) return {}
 
-    const layers = [...document.layers]
-    ;[layers[index], layers[target]] = [layers[target], layers[index]]
-    set({ document: { ...document, layers } })
-  },
+      const layers = [...state.document.layers]
+      ;[layers[index], layers[target]] = [layers[target], layers[index]]
+      return withHistory(state, { ...state.document, layers })
+    }),
 
   updateTransform: (id, patch) =>
-    set((state) => {
-      if (!state.document.layers.some((layer) => layer.id === id)) return state
-      return {
-        document: {
-          ...state.document,
-          layers: state.document.layers.map((layer) => {
-            if (layer.id !== id) return layer
-            const merged = { ...layer.transform, ...patch }
-            // 확대율이 0이 되면 모양이 사라져 되돌릴 수 없으므로 최소값을 지킨다 (뒤집기는 허용)
-            return {
-              ...layer,
-              transform: {
-                ...merged,
-                scaleX: clampScale(merged.scaleX),
-                scaleY: clampScale(merged.scaleY),
-              },
-            }
-          }),
-        },
-      }
-    }),
+    set((state) =>
+      mapLayer(state, id, (layer) => {
+        const merged = { ...layer.transform, ...patch }
+        return {
+          ...layer,
+          transform: {
+            ...merged,
+            scaleX: clampScale(merged.scaleX),
+            scaleY: clampScale(merged.scaleY),
+          },
+        }
+      })
+    ),
 
   setWarpType: (id, type) =>
-    set((state) => {
-      if (!state.document.layers.some((layer) => layer.id === id)) return state
-      return {
-        document: {
-          ...state.document,
-          layers: state.document.layers.map((layer) =>
-            layer.id === id ? { ...layer, warp: createWarp(type) } : layer
-          ),
-        },
-      }
-    }),
+    set((state) => mapLayer(state, id, (layer) => ({ ...layer, warp: createWarp(type) }))),
 
   updateWarpParams: (id, patch) =>
-    set((state) => {
-      if (!state.document.layers.some((layer) => layer.id === id)) return state
-      return {
-        document: {
-          ...state.document,
-          layers: state.document.layers.map((layer) => {
-            if (layer.id !== id) return layer
-            const warp = {
-              ...layer.warp,
-              params: { ...layer.warp.params, ...patch },
-            } as WarpState
-            return { ...layer, warp }
-          }),
-        },
-      }
-    }),
+    set((state) =>
+      mapLayer(state, id, (layer) => ({
+        ...layer,
+        warp: { ...layer.warp, params: { ...layer.warp.params, ...patch } } as WarpState,
+      }))
+    ),
 
   setCanvasSize: (width, height) =>
-    set((state) => ({
-      document: {
+    set((state) =>
+      withHistory(state, {
         ...state.document,
         canvas: {
           ...state.document.canvas,
           width: Math.max(1, Math.round(width)),
           height: Math.max(1, Math.round(height)),
         },
-      },
-    })),
+      })
+    ),
 
   setCanvasBackground: (background) =>
-    set((state) => ({
-      document: { ...state.document, canvas: { ...state.document.canvas, background } },
-    })),
+    set((state) =>
+      withHistory(state, {
+        ...state.document,
+        canvas: { ...state.document.canvas, background },
+      })
+    ),
 
-  fitCanvasToContent: (padding = 0) => {
-    const { document } = get()
-    const bounds = contentBounds(document)
-    if (!bounds) return
+  fitCanvasToContent: (padding = 0) =>
+    set((state) => {
+      const bounds = contentBounds(state.document)
+      if (!bounds) return {}
 
-    const offsetX = bounds.minX - padding
-    const offsetY = bounds.minY - padding
-    set({
-      document: {
+      const offsetX = bounds.minX - padding
+      const offsetY = bounds.minY - padding
+      return withHistory(state, {
         canvas: {
-          ...document.canvas,
+          ...state.document.canvas,
           width: Math.max(1, Math.round(bounds.maxX - bounds.minX + padding * 2)),
           height: Math.max(1, Math.round(bounds.maxY - bounds.minY + padding * 2)),
         },
         // 캔버스를 옮긴 만큼 레이어도 함께 옮겨 화면에 보이던 그대로를 유지한다
-        layers: document.layers.map((layer) => ({
+        layers: state.document.layers.map((layer) => ({
           ...layer,
           transform: {
             ...layer.transform,
@@ -244,9 +259,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             y: layer.transform.y - offsetY,
           },
         })),
-      },
-    })
-  },
+      })
+    }),
 
   setZoom: (zoom) =>
     set((state) => ({
@@ -255,8 +269,59 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   panBy: (dx, dy) =>
     set((state) => ({
-      viewport: { ...state.viewport, panX: state.viewport.panX + dx, panY: state.viewport.panY + dy },
+      viewport: {
+        ...state.viewport,
+        panX: state.viewport.panX + dx,
+        panY: state.viewport.panY + dy,
+      },
     })),
 
   setViewport: (viewport) => set((state) => ({ viewport: { ...state.viewport, ...viewport } })),
+
+  beginGesture: () =>
+    set((state) => {
+      if (state.historyPaused) return {}
+      return {
+        historyPaused: true,
+        past: [...state.past, state.document].slice(-HISTORY_LIMIT),
+        future: [],
+      }
+    }),
+
+  endGesture: () => set({ historyPaused: false }),
+
+  undo: () =>
+    set((state) => {
+      const previous = state.past[state.past.length - 1]
+      if (!previous) return {}
+      return {
+        document: previous,
+        past: state.past.slice(0, -1),
+        future: [state.document, ...state.future],
+      }
+    }),
+
+  redo: () =>
+    set((state) => {
+      const next = state.future[0]
+      if (!next) return {}
+      return {
+        document: next,
+        past: [...state.past, state.document],
+        future: state.future.slice(1),
+      }
+    }),
+
+  canUndo: () => get().past.length > 0,
+  canRedo: () => get().future.length > 0,
+
+  replaceDocument: (document) =>
+    set({
+      document,
+      past: [],
+      future: [],
+      historyPaused: false,
+      selectedLayerId: null,
+      mode: 'transform',
+    }),
 }))

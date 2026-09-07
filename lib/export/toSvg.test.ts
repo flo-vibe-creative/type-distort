@@ -73,6 +73,7 @@ describe('documentToSvgMarkup', () => {
         width: 200,
         height: 100,
         scaledDown: false,
+        blob: new Blob(),
       },
       transform: { x: 5, y: 5, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
@@ -96,6 +97,7 @@ describe('documentToSvgMarkup', () => {
         width: 200,
         height: 100,
         scaledDown: false,
+        blob: new Blob(),
       },
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
@@ -124,6 +126,7 @@ describe('hasRasterLayer', () => {
         width: 10,
         height: 10,
         scaledDown: false,
+        blob: new Blob(),
       },
     })
     expect(hasRasterLayer(doc([raster]))).toBe(true)

@@ -1,6 +1,7 @@
 'use client'
 
 import { Text } from '@/components/ui/Text'
+import { useEditorStore } from '@/store/editorStore'
 
 interface SliderFieldProps {
   label: string
@@ -41,6 +42,10 @@ export function SliderField({
         max={max}
         step={step}
         value={value}
+        onPointerDown={() => useEditorStore.getState().beginGesture()}
+        onPointerUp={() => useEditorStore.getState().endGesture()}
+        onKeyDown={() => useEditorStore.getState().beginGesture()}
+        onKeyUp={() => useEditorStore.getState().endGesture()}
         onChange={(event) => onChange(Number.parseFloat(event.target.value))}
         className="h-1 w-full cursor-pointer appearance-none rounded bg-surface-quaternary accent-blue-800"
       />

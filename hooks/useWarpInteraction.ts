@@ -21,6 +21,7 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
   const dragRef = useRef<WarpDrag | null>(null)
 
   const beginWarpDrag = useCallback((layerId: string, handleId: string) => {
+    useEditorStore.getState().beginGesture()
     dragRef.current = { layerId, handleId }
     setActive(true)
   }, [])
@@ -43,6 +44,7 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
 
     const onUp = () => {
       dragRef.current = null
+      useEditorStore.getState().endGesture()
       setActive(false)
     }
 

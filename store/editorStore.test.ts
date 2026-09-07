@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Layer } from '@/lib/document/types'
-import { DEFAULT_CANVAS, useEditorStore } from '@/store/editorStore'
+import { DEFAULT_CANVAS, HISTORY_LIMIT, useEditorStore } from '@/store/editorStore'
 import { createWarp } from '@/lib/warp/registry'
 
 let counter = 0
@@ -217,5 +217,75 @@ describe('내용에 맞춰 자르기', () => {
     const before = store().document
     store().fitCanvasToContent()
     expect(store().document).toBe(before)
+  })
+})
+
+describe('되돌리기 / 다시하기', () => {
+  it('처음에는 되돌릴 것도 다시 할 것도 없다', () => {
+    expect(store().canUndo()).toBe(false)
+    expect(store().canRedo()).toBe(false)
+  })
+
+  it('레이어를 추가한 뒤 되돌리면 없던 상태로 간다', () => {
+    store().addLayers([fakeLayer('A')])
+    expect(store().canUndo()).toBe(true)
+    store().undo()
+    expect(store().document.layers).toHaveLength(0)
+    store().redo()
+    expect(store().document.layers).toHaveLength(1)
+  })
+
+  it('여러 단계를 순서대로 거슬러 간다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().updateTransform(a.id, { x: 10 })
+    store().updateTransform(a.id, { x: 20 })
+
+    store().undo()
+    expect(store().document.layers[0].transform.x).toBe(10)
+    store().undo()
+    expect(store().document.layers[0].transform.x).not.toBe(10)
+    store().redo()
+    expect(store().document.layers[0].transform.x).toBe(10)
+  })
+
+  it('되돌린 뒤 새로 고치면 다시 할 것이 사라진다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().updateTransform(a.id, { x: 10 })
+    store().undo()
+    store().updateTransform(a.id, { x: 99 })
+    expect(store().canRedo()).toBe(false)
+  })
+
+  it('드래그 한 번은 되돌리기 한 단계로 묶인다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    const before = store().document.layers[0].transform.x
+
+    store().beginGesture()
+    for (let step = 1; step <= 20; step += 1) {
+      store().updateTransform(a.id, { x: before + step })
+    }
+    store().endGesture()
+
+    store().undo()
+    expect(store().document.layers[0].transform.x).toBe(before)
+  })
+
+  it('되돌리기 기록은 정해진 단계 수까지만 쌓인다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    for (let step = 0; step < HISTORY_LIMIT + 20; step += 1) {
+      store().updateTransform(a.id, { x: step })
+    }
+    expect(store().past.length).toBe(HISTORY_LIMIT)
+  })
+
+  it('저장본을 되살리면 되돌리기 기록은 비워진다', () => {
+    store().addLayers([fakeLayer('A')])
+    store().replaceDocument({ canvas: { width: 10, height: 10, background: null }, layers: [] })
+    expect(store().canUndo()).toBe(false)
+    expect(store().document.canvas.width).toBe(10)
   })
 })

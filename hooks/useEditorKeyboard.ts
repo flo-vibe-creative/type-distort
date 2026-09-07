@@ -27,6 +27,14 @@ export function useEditorKeyboard() {
       const state = useEditorStore.getState()
       const id = state.selectedLayerId
 
+      // Cmd/Ctrl + Z 되돌리기, Shift를 더하면 다시하기
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) state.redo()
+        else state.undo()
+        return
+      }
+
       if (event.key === 'Escape') {
         // 왜곡 모드였다면 먼저 배치 모드로 빠져나오고, 그 다음 눌렀을 때 선택을 푼다
         if (state.mode === 'warp') state.setMode('transform')

@@ -5,11 +5,16 @@ import { ExportDialog } from '@/components/editor/ExportDialog'
 import { Text } from '@/components/ui/Text'
 import { useFileImport } from '@/hooks/useFileImport'
 import { supportedImportLabel } from '@/lib/document/importFiles'
+import { useEditorStore } from '@/store/editorStore'
 
 export function Toolbar() {
   const inputRef = useRef<HTMLInputElement>(null)
   const { importFileList, importing } = useFileImport()
   const [exportOpen, setExportOpen] = useState(false)
+  const undo = useEditorStore((state) => state.undo)
+  const redo = useEditorStore((state) => state.redo)
+  const canUndo = useEditorStore((state) => state.past.length > 0)
+  const canRedo = useEditorStore((state) => state.future.length > 0)
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
@@ -45,6 +50,28 @@ export function Toolbar() {
       </Text>
 
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+          title="되돌리기 (Cmd+Z)"
+          className="rounded-md border border-border px-2.5 py-1.5 hover:bg-surface-minimal disabled:opacity-30"
+        >
+          <Text variant="ui13" as="span">
+            ↶
+          </Text>
+        </button>
+        <button
+          type="button"
+          onClick={redo}
+          disabled={!canRedo}
+          title="다시하기 (Cmd+Shift+Z)"
+          className="rounded-md border border-border px-2.5 py-1.5 hover:bg-surface-minimal disabled:opacity-30"
+        >
+          <Text variant="ui13" as="span">
+            ↷
+          </Text>
+        </button>
         <button
           type="button"
           onClick={() => setExportOpen(true)}

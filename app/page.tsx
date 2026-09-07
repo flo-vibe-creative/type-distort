@@ -6,10 +6,12 @@ import { InspectorPanel } from '@/components/editor/InspectorPanel'
 import { LayerPanel } from '@/components/editor/LayerPanel'
 import { NoticeList } from '@/components/editor/NoticeList'
 import { Toolbar } from '@/components/editor/Toolbar'
+import { useDocumentPersistence } from '@/hooks/useDocumentPersistence'
 import { useEditorKeyboard } from '@/hooks/useEditorKeyboard'
 
 export default function EditorPage() {
   useEditorKeyboard()
+  useDocumentPersistence()
 
   return (
     <DropZone>

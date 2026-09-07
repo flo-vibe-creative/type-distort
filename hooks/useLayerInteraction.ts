@@ -33,6 +33,7 @@ export function useLayerInteraction(toCanvasPoint: (event: PointerEvent) => Poin
     (kind: InteractionKind, layerId: string, handle: HandleId | null, pointer: Point) => {
       const layer = useEditorStore.getState().document.layers.find((l) => l.id === layerId)
       if (!layer) return
+      useEditorStore.getState().beginGesture()
       interactionRef.current = {
         kind,
         layerId,
@@ -84,6 +85,7 @@ export function useLayerInteraction(toCanvasPoint: (event: PointerEvent) => Poin
 
     const onUp = () => {
       interactionRef.current = null
+      useEditorStore.getState().endGesture()
       setActive(false)
     }
 

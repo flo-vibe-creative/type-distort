@@ -28,6 +28,8 @@ export interface RasterLayerSource {
   height: number
   /** 텍스처 한계를 넘어 자동으로 줄였는지 */
   scaledDown: boolean
+  /** 새로고침 후 되살리기 위해 들고 있는 원본 파일 */
+  blob: Blob
 }
 
 export type LayerSource = VectorLayerSource | RasterLayerSource

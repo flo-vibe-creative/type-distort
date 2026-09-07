@@ -52,6 +52,7 @@ export function createRasterLayer(image: RasterSource, fileName: string): Layer 
       width: image.width,
       height: image.height,
       scaledDown: image.scaledDown,
+      blob: image.blob,
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),

@@ -44,6 +44,8 @@ export interface RasterSource {
   width: number
   height: number
   scaledDown: boolean
+  /** 새로고침 후 되살리기 위해 들고 있는 원본 파일 */
+  blob: Blob
 }
 
 export type ImageLoadResult =
@@ -51,10 +53,19 @@ export type ImageLoadResult =
   | { ok: false; reason: string; hint: string }
 
 export async function loadRasterFile(file: File): Promise<ImageLoadResult> {
-  if (!isSupportedImageType(file.type, file.name)) {
+  return loadRasterBlob(file, file.name, file.type)
+}
+
+/** 파일이든 저장해 둔 원본이든 같은 경로로 불러온다 */
+export async function loadRasterBlob(
+  file: Blob,
+  fileName: string,
+  mimeType: string
+): Promise<ImageLoadResult> {
+  if (!isSupportedImageType(mimeType, fileName)) {
     return {
       ok: false,
-      reason: `${file.name}은(는) 가져올 수 없는 형식입니다.`,
+      reason: `${fileName}은(는) 가져올 수 없는 형식입니다.`,
       hint: `${supportedImportLabel} 파일만 가져올 수 있습니다.`,
     }
   }
@@ -65,7 +76,7 @@ export async function loadRasterFile(file: File): Promise<ImageLoadResult> {
   } catch {
     return {
       ok: false,
-      reason: `${file.name}을(를) 열 수 없습니다. 파일이 손상되었을 수 있습니다.`,
+      reason: `${fileName}을(를) 열 수 없습니다. 파일이 손상되었을 수 있습니다.`,
       hint: '다른 이미지로 시도하거나, 이미지 편집 프로그램에서 다시 저장한 뒤 가져와 주세요.',
     }
   }
@@ -74,7 +85,13 @@ export async function loadRasterFile(file: File): Promise<ImageLoadResult> {
   if (!fitted.scaledDown) {
     return {
       ok: true,
-      image: { bitmap: original, width: fitted.width, height: fitted.height, scaledDown: false },
+      image: {
+        bitmap: original,
+        width: fitted.width,
+        height: fitted.height,
+        scaledDown: false,
+        blob: file,
+      },
     }
   }
 
@@ -88,6 +105,12 @@ export async function loadRasterFile(file: File): Promise<ImageLoadResult> {
 
   return {
     ok: true,
-    image: { bitmap: resized, width: fitted.width, height: fitted.height, scaledDown: true },
+    image: {
+      bitmap: resized,
+      width: fitted.width,
+      height: fitted.height,
+      scaledDown: true,
+      blob: file,
+    },
   }
 }
