@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/Text'
 import { WarpHandles } from '@/components/editor/WarpHandles'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
 import { useWarpInteraction } from '@/hooks/useWarpInteraction'
+import { useWarpMarquee } from '@/hooks/useWarpMarquee'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import type { Point } from '@/lib/warp/types'
@@ -47,6 +48,7 @@ export function CanvasStage() {
 
   const interaction = useLayerInteraction(toCanvasPoint)
   const warpInteraction = useWarpInteraction(toCanvasPoint)
+  const marquee = useWarpMarquee(toCanvasPoint)
   const dragging = interaction.dragging || warpInteraction.dragging
 
   const fitToView = useCallback(() => {
@@ -145,6 +147,14 @@ export function CanvasStage() {
     // 실제로 그려진 도형을 눌렀는지 DOM으로 확인한다 — 보이는 그대로가 곧 선택 범위가 된다
     const hit = (event.target as HTMLElement).closest('[data-layer-id]')
     const layerId = hit?.getAttribute('data-layer-id') ?? null
+    const state = useEditorStore.getState()
+
+    // 왜곡 모드에서 조작점 바깥을 누르면 영역을 그려 여러 점을 고른다
+    const editingWarp = state.mode === 'warp' && state.selectedLayerId !== null
+    if (editingWarp && (!layerId || layerId === state.selectedLayerId)) {
+      marquee.beginMarquee(toCanvasPoint(event), event.shiftKey)
+      return
+    }
 
     if (!layerId) {
       selectLayer(null)
@@ -223,6 +233,20 @@ export function CanvasStage() {
               overflow: 'visible',
             }}
           >
+            {marquee.marqueeRect && (
+              <rect
+                x={marquee.marqueeRect.minX}
+                y={marquee.marqueeRect.minY}
+                width={marquee.marqueeRect.maxX - marquee.marqueeRect.minX}
+                height={marquee.marqueeRect.maxY - marquee.marqueeRect.minY}
+                fill="rgba(123, 63, 255, 0.08)"
+                stroke="#7b3fff"
+                strokeWidth={1}
+                strokeDasharray="4 3"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+
             {showTransformHandles ? (
               <TransformHandles
                 layer={selectedLayer}

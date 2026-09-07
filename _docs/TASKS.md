@@ -77,6 +77,8 @@
 | `lib/svg/glyphs.ts` | 도형을 글자 단위로 나누기 |
 | `lib/render/letterSpacing.ts` | 자간 적용 |
 | `lib/render/layerSource.ts` | 자간을 반영한 도형·왜곡 기준 크기 |
+| `lib/render/warpSelection.ts` | 영역 안 조작점 골라내기 |
+| `hooks/useWarpMarquee.ts` | 드래그로 영역 그려 선택 |
 | `hooks/useWarpInteraction.ts` | 왜곡 조작점 드래그 |
 | `components/editor/SliderField.tsx` | 슬라이더 |
 | `components/editor/WarpHandles.tsx` | 왜곡 핸들 (효과별 분기) |
@@ -174,6 +176,7 @@
 - [x] 자간 조절 추가 — 모든 효과에 공통으로 걸리는 글자 사이 간격 (벡터 레이어 전용)
 - [x] 슬라이더 옆 숫자 직접 입력 — 단위 포함 입력, 범위 보정, 방향키 조절
 - [x] 조작점 여러 개 선택 — Shift로 더하고 빼며, 고른 점들을 함께 이동 (메쉬·퍼스펙티브)
+- [x] 드래그로 영역을 그려 여러 조작점 한 번에 선택
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 
