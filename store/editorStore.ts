@@ -46,6 +46,11 @@ interface EditorState {
   future: EditorDocument[]
   /** 드래그하는 동안에는 기록을 쌓지 않는다 */
   historyPaused: boolean
+  /**
+   * 왜곡 모드에서 골라 둔 조작점들. 여러 개를 골라 함께 옮길 때 쓴다.
+   * 화면 조작을 위한 값이라 문서에 저장되거나 되돌리기에 쌓이지 않는다.
+   */
+  selectedWarpHandles: string[]
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
@@ -65,6 +70,8 @@ interface EditorState {
   setZoom: (zoom: number) => void
   panBy: (dx: number, dy: number) => void
   setViewport: (viewport: Partial<Viewport>) => void
+  setWarpHandleSelection: (handleIds: string[]) => void
+  clearWarpHandleSelection: () => void
 
   /** 드래그 한 번을 되돌리기 한 단계로 묶는다 */
   beginGesture: () => void
@@ -115,6 +122,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   past: [],
   future: [],
   historyPaused: false,
+  selectedWarpHandles: [],
 
   reset: () =>
     set({
@@ -125,6 +133,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       historyPaused: false,
+      selectedWarpHandles: [],
     }),
 
   addLayers: (incoming) =>
@@ -168,12 +177,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...withHistory(state, { ...state.document, layers }),
         selectedLayerId: nextSelected,
         mode: nextSelected ? state.mode : 'transform',
+        selectedWarpHandles: [],
       }
     }),
 
-  selectLayer: (id) => set((state) => ({ selectedLayerId: id, mode: id ? state.mode : 'transform' })),
+  selectLayer: (id) =>
+    set((state) => ({
+      selectedLayerId: id,
+      mode: id ? state.mode : 'transform',
+      selectedWarpHandles: [],
+    })),
 
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => set({ mode, selectedWarpHandles: [] }),
 
   toggleLayerVisibility: (id) =>
     set((state) => mapLayer(state, id, (layer) => ({ ...layer, visible: !layer.visible }))),
@@ -208,7 +223,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     ),
 
   setWarpType: (id, type) =>
-    set((state) => mapLayer(state, id, (layer) => ({ ...layer, warp: createWarp(type) }))),
+    set((state) => ({
+      ...mapLayer(state, id, (layer) => ({ ...layer, warp: createWarp(type) })),
+      // 효과가 바뀌면 조작점 자체가 달라지므로 골라 둔 것을 비운다
+      selectedWarpHandles: [],
+    })),
 
   updateWarpParams: (id, patch) =>
     set((state) =>
@@ -287,6 +306,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setViewport: (viewport) => set((state) => ({ viewport: { ...state.viewport, ...viewport } })),
 
+  setWarpHandleSelection: (handleIds) => set({ selectedWarpHandles: handleIds }),
+
+  clearWarpHandleSelection: () =>
+    set((state) => (state.selectedWarpHandles.length === 0 ? {} : { selectedWarpHandles: [] })),
+
   beginGesture: () =>
     set((state) => {
       if (state.historyPaused) return {}
@@ -332,5 +356,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       historyPaused: false,
       selectedLayerId: null,
       mode: 'transform',
+      selectedWarpHandles: [],
     }),
 }))

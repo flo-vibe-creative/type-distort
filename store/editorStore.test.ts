@@ -315,3 +315,45 @@ describe('자간', () => {
     expect(store().document.layers[0].letterSpacing).toBe(0)
   })
 })
+
+describe('왜곡 조작점 선택', () => {
+  it('처음에는 골라 둔 점이 없다', () => {
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+
+  it('여러 점을 골라 둘 수 있다', () => {
+    store().setWarpHandleSelection(['mesh-5', 'mesh-6'])
+    expect(store().selectedWarpHandles).toEqual(['mesh-5', 'mesh-6'])
+  })
+
+  it('레이어를 바꾸면 골라 둔 점이 비워진다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().setWarpHandleSelection(['mesh-5'])
+    store().selectLayer(a.id)
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+
+  it('효과를 바꾸면 조작점 자체가 달라지므로 선택이 비워진다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().setWarpHandleSelection(['mesh-5'])
+    store().setWarpType(a.id, 'perspective')
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+
+  it('모드를 바꾸면 선택이 비워진다', () => {
+    store().setWarpHandleSelection(['mesh-5'])
+    store().setMode('transform')
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+
+  it('선택을 비우는 것은 되돌리기에 쌓이지 않는다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    const stepsBefore = store().past.length
+    store().setWarpHandleSelection(['mesh-5'])
+    store().clearWarpHandleSelection()
+    expect(store().past.length).toBe(stepsBefore)
+  })
+})

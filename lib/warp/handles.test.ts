@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { dragWarpHandle, warpHandles } from '@/lib/warp/handles'
+import {
+  dragWarpHandle,
+  dragWarpHandles,
+  supportsMultiSelect,
+  warpHandles,
+} from '@/lib/warp/handles'
 import { createWarp } from '@/lib/warp/registry'
 import { applyWarp } from '@/lib/warp/registry'
 
@@ -157,5 +162,67 @@ describe('잘못된 입력', () => {
     expect(
       dragWarpHandle(createWarp('mesh'), { width: 0, height: 0 }, 'mesh-5', { x: 1, y: 1 })
     ).toBeNull()
+  })
+})
+
+describe('여러 점 함께 옮기기', () => {
+  it('메쉬와 퍼스펙티브만 여러 점을 묶을 수 있다', () => {
+    expect(supportsMultiSelect('mesh')).toBe(true)
+    expect(supportsMultiSelect('perspective')).toBe(true)
+    expect(supportsMultiSelect('arc')).toBe(false)
+    expect(supportsMultiSelect('bulge')).toBe(false)
+  })
+
+  it('고른 점이 하나뿐이면 평소와 똑같이 움직인다', () => {
+    const warp = createWarp('mesh')
+    const patch = dragWarpHandles(warp, size, 'mesh-5', ['mesh-5'], { x: 60, y: 10 })
+    const points = patch!.points as { x: number; y: number }[]
+    expect(points[5]).toEqual({ x: 0.3, y: 0.1 })
+    expect(points[6]).toEqual({ x: 2 / 3, y: 1 / 3 })
+  })
+
+  it('여러 점을 골라 두면 끈 거리만큼 나머지도 함께 움직인다', () => {
+    const warp = createWarp('mesh')
+    if (warp.type !== 'mesh') throw new Error('mesh')
+    const before = warp.params.points.map((p) => ({ ...p }))
+
+    // 5번 점을 오른쪽으로 0.1(=20px), 아래로 0.2(=20px) 옮긴다
+    const target = { x: (before[5].x + 0.1) * size.width, y: (before[5].y + 0.2) * size.height }
+    const patch = dragWarpHandles(warp, size, 'mesh-5', ['mesh-5', 'mesh-6', 'mesh-9'], target)
+    const points = patch!.points as { x: number; y: number }[]
+
+    for (const index of [5, 6, 9]) {
+      expect(points[index].x).toBeCloseTo(before[index].x + 0.1, 6)
+      expect(points[index].y).toBeCloseTo(before[index].y + 0.2, 6)
+    }
+    // 고르지 않은 점은 그대로다
+    expect(points[0]).toEqual(before[0])
+  })
+
+  it('퍼스펙티브 모서리도 함께 움직인다', () => {
+    const warp = createWarp('perspective')
+    if (warp.type !== 'perspective') throw new Error('perspective')
+    const before = warp.params.corners.map((p) => ({ ...p }))
+    const target = { x: 0.2 * size.width, y: 0.1 * size.height }
+
+    const patch = dragWarpHandles(warp, size, 'perspective-0', ['perspective-0', 'perspective-1'], target)
+    const corners = patch!.corners as { x: number; y: number }[]
+    expect(corners[0]).toEqual({ x: 0.2, y: 0.1 })
+    expect(corners[1].x).toBeCloseTo(before[1].x + 0.2, 6)
+    expect(corners[1].y).toBeCloseTo(before[1].y + 0.1, 6)
+  })
+
+  it('여러 점을 묶을 수 없는 효과는 기준 점만 움직인다', () => {
+    const warp = createWarp('bulge')
+    const patch = dragWarpHandles(warp, size, 'bulge-center', ['bulge-center', 'bulge-radius'], {
+      x: 50,
+      y: 25,
+    })
+    expect(patch).toEqual({ cx: 0.25, cy: 0.25 })
+  })
+
+  it('다룰 수 없는 핸들이면 아무것도 바꾸지 않는다', () => {
+    const warp = createWarp('mesh')
+    expect(dragWarpHandles(warp, size, 'mesh-99', ['mesh-99', 'mesh-1'], { x: 0, y: 0 })).toBeNull()
   })
 })

@@ -11,11 +11,15 @@ import type { Point } from '@/lib/warp/types'
 
 /** 화면에서 보이는 조작점 지름 (px) */
 const HANDLE_SIZE = 10
+/** 골라 둔 점은 조금 더 크게 그려 눈에 띄게 한다 */
+const SELECTED_HANDLE_SIZE = 13
 const ACCENT = '#7b3fff'
 
 interface WarpHandlesProps {
   layer: Layer
   zoom: number
+  /** 여러 개를 골라 함께 옮길 때 골라 둔 조작점들 */
+  selectedHandleIds: readonly string[]
   onHandleDown: (handleId: string, event: React.PointerEvent) => void
 }
 
@@ -108,7 +112,12 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
   )
 }
 
-export function WarpHandles({ layer, zoom, onHandleDown }: WarpHandlesProps) {
+export function WarpHandles({
+  layer,
+  zoom,
+  selectedHandleIds,
+  onHandleDown,
+}: WarpHandlesProps) {
   const size = warpDomainSize(layer)
   const toCanvas = useMemo(
     () => (point: Point) => localToCanvas(layer.transform, point),
@@ -116,6 +125,7 @@ export function WarpHandles({ layer, zoom, onHandleDown }: WarpHandlesProps) {
   )
   const handles = useMemo(() => warpHandles(layer.warp, size), [layer.warp, size])
   const radius = HANDLE_SIZE / 2 / zoom
+  const selectedRadius = SELECTED_HANDLE_SIZE / 2 / zoom
 
   return (
     <g>
@@ -123,17 +133,18 @@ export function WarpHandles({ layer, zoom, onHandleDown }: WarpHandlesProps) {
 
       {handles.map((handle) => {
         const point = toCanvas(handle.local)
-        // 기준선·반경 핸들은 채워서 그려, 자리를 옮기는 점들과 구분되게 한다
-        const filled = handle.role !== 'point'
+        const selected = selectedHandleIds.includes(handle.id)
+        // 기준선·반경 핸들과 골라 둔 점은 채워서 그려, 그냥 놓인 점들과 구분되게 한다
+        const filled = selected || handle.role !== 'point'
         return (
           <circle
             key={handle.id}
             cx={point.x}
             cy={point.y}
-            r={radius}
+            r={selected ? selectedRadius : radius}
             fill={filled ? ACCENT : '#ffffff'}
-            stroke={ACCENT}
-            strokeWidth={1.5}
+            stroke={selected ? '#ffffff' : ACCENT}
+            strokeWidth={selected ? 2 : 1.5}
             vectorEffect="non-scaling-stroke"
             style={{
               cursor: handle.role === 'baseline' ? 'ns-resize' : 'grab',

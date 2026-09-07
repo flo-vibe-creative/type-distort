@@ -36,8 +36,9 @@ export function useEditorKeyboard() {
       }
 
       if (event.key === 'Escape') {
-        // 왜곡 모드였다면 먼저 배치 모드로 빠져나오고, 그 다음 눌렀을 때 선택을 푼다
-        if (state.mode === 'warp') state.setMode('transform')
+        // 골라 둔 조작점 → 왜곡 모드 → 레이어 선택 순서로 한 단계씩 빠져나온다
+        if (state.selectedWarpHandles.length > 0) state.clearWarpHandleSelection()
+        else if (state.mode === 'warp') state.setMode('transform')
         else state.selectLayer(null)
         return
       }

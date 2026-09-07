@@ -23,6 +23,7 @@ export function CanvasStage() {
   const viewport = useEditorStore((state) => state.viewport)
   const mode = useEditorStore((state) => state.mode)
   const selectedLayerId = useEditorStore((state) => state.selectedLayerId)
+  const selectedWarpHandles = useEditorStore((state) => state.selectedWarpHandles)
   const setViewport = useEditorStore((state) => state.setViewport)
   const selectLayer = useEditorStore((state) => state.selectLayer)
   const setMode = useEditorStore((state) => state.setMode)
@@ -150,6 +151,7 @@ export function CanvasStage() {
       return
     }
 
+    // 조작점이 아닌 곳을 눌렀으므로 골라 둔 점들은 selectLayer가 함께 놓아준다
     selectLayer(layerId)
     // 배치 모드에서만 곧바로 끌어 옮긴다 (왜곡 모드에서는 핸들 조작이 우선이다)
     if (useEditorStore.getState().mode === 'transform') {
@@ -238,9 +240,10 @@ export function CanvasStage() {
               <WarpHandles
                 layer={selectedLayer}
                 zoom={viewport.zoom}
+                selectedHandleIds={selectedWarpHandles}
                 onHandleDown={(handleId, event) => {
                   event.stopPropagation()
-                  warpInteraction.beginWarpDrag(selectedLayer.id, handleId)
+                  warpInteraction.beginWarpDrag(selectedLayer.id, handleId, event.shiftKey)
                 }}
               />
             )}

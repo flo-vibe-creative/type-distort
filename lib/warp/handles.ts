@@ -1,6 +1,6 @@
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp, type WarpState } from '@/lib/warp/registry'
-import type { Point, WarpContext } from '@/lib/warp/types'
+import type { Point, WarpContext, WarpType } from '@/lib/warp/types'
 
 /** 캔버스에 그려지는 왜곡 조작점 하나 */
 export interface WarpHandle {
@@ -169,4 +169,73 @@ function findArcAngle(
   }
 
   return Math.round(best * 100) / 100
+}
+
+/**
+ * 여러 점을 한꺼번에 골라 함께 옮길 수 있는 효과인지.
+ *
+ * 메쉬의 격자점과 퍼스펙티브의 모서리는 "그 자리 자체"가 값이라 함께 옮기는 것이 자연스럽다.
+ * 반면 아크의 끝점(각도)이나 볼록의 반경 점은 각자 다른 뜻을 가진 조절점이라 묶이지 않는다.
+ */
+export function supportsMultiSelect(type: WarpType): boolean {
+  return type === 'mesh' || type === 'perspective'
+}
+
+/** 여러 점을 골라 둔 상태에서 그중 하나를 끌었을 때, 나머지도 같은 거리만큼 함께 옮긴다 */
+export function dragWarpHandles(
+  warp: WarpState,
+  size: WarpContext,
+  primaryHandleId: string,
+  selectedHandleIds: readonly string[],
+  localPoint: Point
+): Record<string, unknown> | null {
+  const patch = dragWarpHandle(warp, size, primaryHandleId, localPoint)
+  if (!patch) return null
+
+  const others = selectedHandleIds.filter((id) => id !== primaryHandleId)
+  if (others.length === 0 || !supportsMultiSelect(warp.type)) return patch
+
+  if (warp.type === 'mesh') {
+    return moveTogether(patch.points, warp.params.points, primaryHandleId, others, 'mesh-', 'points')
+  }
+  if (warp.type === 'perspective') {
+    return moveTogether(
+      patch.corners,
+      warp.params.corners,
+      primaryHandleId,
+      others,
+      'perspective-',
+      'corners'
+    )
+  }
+  return patch
+}
+
+/** 기준 점이 움직인 거리를 나머지 점에도 그대로 더한다 */
+function moveTogether(
+  updated: unknown,
+  previous: readonly Point[],
+  primaryHandleId: string,
+  others: readonly string[],
+  prefix: string,
+  key: string
+): Record<string, unknown> | null {
+  const points = updated as Point[] | undefined
+  if (!points) return null
+
+  const primaryIndex = indexFrom(primaryHandleId, prefix, points.length)
+  if (primaryIndex === null) return { [key]: points }
+
+  const delta = {
+    x: points[primaryIndex].x - previous[primaryIndex].x,
+    y: points[primaryIndex].y - previous[primaryIndex].y,
+  }
+
+  for (const id of others) {
+    const index = indexFrom(id, prefix, points.length)
+    if (index === null) continue
+    points[index] = { x: previous[index].x + delta.x, y: previous[index].y + delta.y }
+  }
+
+  return { [key]: points }
 }
