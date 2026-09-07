@@ -6,9 +6,10 @@ import { applyWarp } from '@/lib/warp/registry'
 const size = { width: 200, height: 100 }
 
 describe('아크 핸들', () => {
-  it('양 끝에 핸들 두 개가 놓인다', () => {
+  it('양 끝과 기준선 가운데에 핸들이 놓인다', () => {
     const handles = warpHandles(createWarp('arc'), size)
-    expect(handles.map((h) => h.id)).toEqual(['arc-start', 'arc-end'])
+    expect(handles.map((h) => h.id)).toEqual(['arc-start', 'arc-baseline', 'arc-end'])
+    expect(handles[1].role).toBe('baseline')
   })
 
   it('핸들은 실제로 왜곡된 위치에 붙어 있다', () => {
@@ -17,8 +18,42 @@ describe('아크 핸들', () => {
     warp.params.angle = 120
     const handles = warpHandles(warp, size)
     const expected = applyWarp(warp, 1, 0.5, size)
-    expect(handles[1].local.x).toBeCloseTo(expected.x, 6)
-    expect(handles[1].local.y).toBeCloseTo(expected.y, 6)
+    expect(handles[2].local.x).toBeCloseTo(expected.x, 6)
+    expect(handles[2].local.y).toBeCloseTo(expected.y, 6)
+  })
+
+  it('기준선을 옮기면 핸들 세 개가 모두 그 높이로 따라간다', () => {
+    const warp = createWarp('arc')
+    if (warp.type !== 'arc') throw new Error('arc')
+    warp.params.baseline = 1
+    const handles = warpHandles(warp, size)
+    handles.forEach((handle) => expect(handle.local.y).toBeCloseTo(size.height, 6))
+  })
+
+  it('기준선 핸들을 끌면 그 높이가 기준선이 된다', () => {
+    const patch = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 100, y: 80 })
+    expect(patch).toEqual({ baseline: 0.8 })
+  })
+
+  it('기준선은 글자에서 너무 멀리 벗어나지 않는다', () => {
+    const far = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 0, y: 10000 })
+    expect(far!.baseline as number).toBeLessThanOrEqual(1.5)
+    const above = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 0, y: -10000 })
+    expect(above!.baseline as number).toBeGreaterThanOrEqual(-0.5)
+  })
+
+  it('기준선을 옮긴 뒤에도 끝점 핸들로 각도를 정확히 찾아낸다', () => {
+    const target = createWarp('arc')
+    if (target.type !== 'arc') throw new Error('arc')
+    target.params.baseline = 1
+    target.params.angle = 130
+    const at = applyWarp(target, 1, 1, size)
+
+    const current = createWarp('arc')
+    if (current.type !== 'arc') throw new Error('arc')
+    current.params.baseline = 1
+    const patch = dragWarpHandle(current, size, 'arc-end', at)
+    expect(patch!.angle as number).toBeCloseTo(130, 0)
   })
 
   it('핸들을 원래 자리로 끌면 각도가 그대로다', () => {

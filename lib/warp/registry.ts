@@ -17,6 +17,8 @@ export interface SliderSpec {
   step: number
   /** 값 뒤에 붙일 단위 표기 */
   unit?: string
+  /** 화면에 보여줄 때 곱할 배수 (0~1 값을 퍼센트로 보여줄 때) */
+  displayScale?: number
 }
 
 export interface WarpEffectMeta {
@@ -39,6 +41,15 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
     label: '아크 / 링',
     sliders: [
       { key: 'angle', label: '각도', min: -360, max: 360, step: 1, unit: '°' },
+      {
+        key: 'baseline',
+        label: '기준선',
+        min: -0.5,
+        max: 1.5,
+        step: 0.01,
+        unit: '%',
+        displayScale: 100,
+      },
       { key: 'strength', label: '세기', min: 0, max: 1, step: 0.01 },
     ],
   },

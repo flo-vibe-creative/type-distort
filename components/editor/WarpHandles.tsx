@@ -23,8 +23,9 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
   const size = sourceSize(layer.source)
 
   if (layer.warp.type === 'arc') {
+    const baseline = layer.warp.params.baseline
     const samples = Array.from({ length: 49 }, (_, index) =>
-      toCanvas(applyWarp(layer.warp, index / 48, 0.5, size))
+      toCanvas(applyWarp(layer.warp, index / 48, baseline, size))
     )
     return (
       <polyline
@@ -121,18 +122,22 @@ export function WarpHandles({ layer, zoom, onHandleDown }: WarpHandlesProps) {
 
       {handles.map((handle) => {
         const point = toCanvas(handle.local)
-        const isRadius = handle.role === 'radius'
+        // 기준선·반경 핸들은 채워서 그려, 자리를 옮기는 점들과 구분되게 한다
+        const filled = handle.role !== 'point'
         return (
           <circle
             key={handle.id}
             cx={point.x}
             cy={point.y}
             r={radius}
-            fill={isRadius ? ACCENT : '#ffffff'}
+            fill={filled ? ACCENT : '#ffffff'}
             stroke={ACCENT}
             strokeWidth={1.5}
             vectorEffect="non-scaling-stroke"
-            style={{ cursor: 'grab', pointerEvents: 'auto' }}
+            style={{
+              cursor: handle.role === 'baseline' ? 'ns-resize' : 'grab',
+              pointerEvents: 'auto',
+            }}
             onPointerDown={(event) => onHandleDown(handle.id, event)}
           />
         )

@@ -10,6 +10,8 @@ interface SliderFieldProps {
   max: number
   step: number
   suffix?: string
+  /** 화면에 보여줄 때 곱할 배수 (0~1 값을 퍼센트로 보여줄 때) */
+  displayScale?: number
   onChange: (value: number) => void
 }
 
@@ -21,9 +23,12 @@ export function SliderField({
   max,
   step,
   suffix,
+  displayScale = 1,
   onChange,
 }: SliderFieldProps) {
-  const decimals = step < 1 ? 2 : 0
+  const displayStep = step * displayScale
+  const decimals = displayStep < 1 ? 2 : 0
+  const shown = value * displayScale
 
   return (
     <div className="flex flex-col gap-1">
@@ -32,7 +37,7 @@ export function SliderField({
           {label}
         </Text>
         <Text variant="caption12" as="span" color="text-fg-tertiary">
-          {value.toFixed(decimals)}
+          {shown.toFixed(decimals)}
           {suffix ?? ''}
         </Text>
       </div>

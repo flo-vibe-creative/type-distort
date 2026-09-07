@@ -62,3 +62,47 @@ describe('warpArc', () => {
     expect(chord).toBeCloseTo(2 * radius * Math.sin((120 * Math.PI) / 360), 6)
   })
 })
+
+describe('warpArc — 기준선', () => {
+  it('기본 기준선은 글자 한가운데다', () => {
+    expect(ARC_DEFAULT.baseline).toBe(0.5)
+  })
+
+  it('기준선을 어디에 두든 각도가 0이면 원본 그대로다', () => {
+    for (const baseline of [0, 0.25, 0.5, 1]) {
+      const p = warpArc(0.3, 0.7, { ...ARC_DEFAULT, angle: 0, baseline }, ctx)
+      expect(p.x).toBeCloseTo(0.3 * ctx.width, 6)
+      expect(p.y).toBeCloseTo(0.7 * ctx.height, 6)
+    }
+  })
+
+  it('기준선 위의 점은 늘거나 줄지 않아 호의 길이가 원본 너비와 같다', () => {
+    for (const baseline of [0, 0.5, 1]) {
+      const params = { ...ARC_DEFAULT, angle: 120, baseline }
+      const radius = ctx.width / ((120 * Math.PI) / 180)
+      const start = warpArc(0, baseline, params, ctx)
+      const end = warpArc(1, baseline, params, ctx)
+      const chord = Math.hypot(end.x - start.x, end.y - start.y)
+      expect(chord).toBeCloseTo(2 * radius * Math.sin((120 * Math.PI) / 360), 6)
+    }
+  })
+
+  it('기준선을 아랫변에 두면 글자가 곡선 위에 올라앉는다', () => {
+    const params = { ...ARC_DEFAULT, angle: 120, baseline: 1 }
+    // 아랫변(v = 1)은 호를 따라가고, 윗변(v = 0)은 그보다 바깥으로 벌어진다
+    const bottomEnd = warpArc(1, 1, params, ctx)
+    const topEnd = warpArc(1, 0, params, ctx)
+    const center = { x: ctx.width / 2, y: ctx.height + ctx.width / ((120 * Math.PI) / 180) }
+    const bottomRadius = Math.hypot(bottomEnd.x - center.x, bottomEnd.y - center.y)
+    const topRadius = Math.hypot(topEnd.x - center.x, topEnd.y - center.y)
+    expect(topRadius).toBeGreaterThan(bottomRadius)
+  })
+
+  it('기준선 가운데 지점은 항상 그 높이에 그대로 머문다 (핸들이 붙는 자리)', () => {
+    for (const baseline of [0, 0.3, 1]) {
+      const p = warpArc(0.5, baseline, { ...ARC_DEFAULT, angle: 140, baseline }, ctx)
+      expect(p.x).toBeCloseTo(ctx.width / 2, 6)
+      expect(p.y).toBeCloseTo(baseline * ctx.height, 6)
+    }
+  })
+})

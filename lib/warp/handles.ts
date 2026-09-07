@@ -7,18 +7,21 @@ export interface WarpHandle {
   id: string
   /** 레이어 좌표계에서의 위치 */
   local: Point
-  /** 점을 옮기는 핸들인지, 반경을 정하는 핸들인지 — 그리는 모양이 다르다 */
-  role: 'point' | 'radius'
+  /** 핸들 종류 — 그리는 모양이 다르다 */
+  role: 'point' | 'radius' | 'baseline'
 }
 
 /** 현재 왜곡 상태에서 조작점들이 놓일 자리 */
 export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
   switch (warp.type) {
-    case 'arc':
+    case 'arc': {
+      const baseline = warp.params.baseline
       return [
-        { id: 'arc-start', local: applyWarp(warp, 0, 0.5, size), role: 'point' },
-        { id: 'arc-end', local: applyWarp(warp, 1, 0.5, size), role: 'point' },
+        { id: 'arc-start', local: applyWarp(warp, 0, baseline, size), role: 'point' },
+        { id: 'arc-baseline', local: applyWarp(warp, 0.5, baseline, size), role: 'baseline' },
+        { id: 'arc-end', local: applyWarp(warp, 1, baseline, size), role: 'point' },
       ]
+    }
 
     case 'bulge': {
       const center = { x: warp.params.cx * size.width, y: warp.params.cy * size.height }
@@ -55,6 +58,9 @@ const ARC_COARSE_STEP = 1
 const ARC_REFINE_STEP = 0.05
 /** 반경이 0이 되면 왜곡이 사라지므로 최소값을 둔다 */
 const MIN_BULGE_RADIUS = 0.02
+/** 기준선을 글자 밖으로도 조금은 뺄 수 있게 하되, 뒤집힐 만큼 멀리는 못 가게 막는다 */
+export const BASELINE_MIN = -0.5
+export const BASELINE_MAX = 1.5
 
 /**
  * 조작점을 끌었을 때 바뀌어야 할 파라미터를 구한다.
@@ -75,6 +81,11 @@ export function dragWarpHandle(
 
   switch (warp.type) {
     case 'arc': {
+      if (handleId === 'arc-baseline') {
+        // 기준선 가운데 지점은 언제나 (너비/2, 높이×기준선)에 있으므로 높이를 그대로 읽으면 된다
+        const baseline = localPoint.y / size.height
+        return { baseline: Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, baseline)) }
+      }
       const u = handleId === 'arc-start' ? 0 : handleId === 'arc-end' ? 1 : null
       if (u === null) return null
       return { angle: findArcAngle(warp, size, u, localPoint) }
@@ -126,7 +137,12 @@ function findArcAngle(
   target: Point
 ): number {
   const distanceAt = (angle: number) => {
-    const point = applyWarp({ type: 'arc', params: { ...warp.params, angle } }, u, 0.5, size)
+    const point = applyWarp(
+      { type: 'arc', params: { ...warp.params, angle } },
+      u,
+      warp.params.baseline,
+      size
+    )
     return Math.hypot(point.x - target.x, point.y - target.y)
   }
 
