@@ -1,5 +1,6 @@
-import { sourceSize, type Layer } from '@/lib/document/types'
+import type { Layer } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
+import { warpDomainSize } from '@/lib/render/layerSource'
 import { applyWarp } from '@/lib/warp/registry'
 
 /**
@@ -11,7 +12,7 @@ import { applyWarp } from '@/lib/warp/registry'
 const SAMPLE_STEPS = 16
 
 export function warpedBounds(layer: Layer): Bounds {
-  const size = sourceSize(layer.source)
+  const size = warpDomainSize(layer)
   if (size.width <= 0 || size.height <= 0) {
     return { minX: 0, minY: 0, maxX: Math.max(0, size.width), maxY: Math.max(0, size.height) }
   }

@@ -23,6 +23,7 @@ function vectorLayer(): Layer {
     },
     transform: { x: 5, y: 6, scaleX: 1.5, scaleY: 2, rotation: 30 },
     warp: createWarp('bulge'),
+    letterSpacing: 0.25,
   }
 }
 
@@ -41,6 +42,7 @@ function rasterLayer(): Layer {
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('mesh'),
+    letterSpacing: 0,
   }
 }
 

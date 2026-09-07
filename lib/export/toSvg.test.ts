@@ -23,6 +23,7 @@ function vectorLayer(overrides: Partial<Layer> = {}): Layer {
     },
     transform: { x: 10, y: 20, scaleX: 2, scaleY: 1, rotation: 15 },
     warp: createWarp('arc'),
+    letterSpacing: 0,
     ...overrides,
   }
 }
@@ -77,6 +78,7 @@ describe('documentToSvgMarkup', () => {
       },
       transform: { x: 5, y: 5, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
+    letterSpacing: 0,
     }
     const markup = documentToSvgMarkup(doc([raster]), {
       r1: { href: 'data:image/png;base64,AAA', bounds: { minX: 0, minY: 0, maxX: 200, maxY: 100 } },
@@ -101,6 +103,7 @@ describe('documentToSvgMarkup', () => {
       },
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
+    letterSpacing: 0,
     }
     expect(documentToSvgMarkup(doc([raster]), {})).not.toContain('<image')
   })

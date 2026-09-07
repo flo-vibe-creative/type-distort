@@ -41,6 +41,11 @@ export interface Layer {
   source: LayerSource
   transform: LayerTransform
   warp: WarpState
+  /**
+   * 글자 사이 간격. 글자 높이에 대한 비율이며 0이면 원본 그대로.
+   * 이미지 레이어에는 글자 단위가 없어 쓰이지 않는다.
+   */
+  letterSpacing: number
 }
 
 export interface CanvasSettings {

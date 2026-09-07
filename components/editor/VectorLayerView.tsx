@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import type { Layer, VectorLayerSource } from '@/lib/document/types'
+import { spacedVectorSource } from '@/lib/render/layerSource'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import { toleranceForZoom, warpCommandsToPathData } from '@/lib/render/warpShape'
 
@@ -33,16 +34,21 @@ export function VectorLayerView({
     dragging
   )
 
+  const spaced = useMemo(
+    () => spacedVectorSource(source, layer.letterSpacing),
+    [source, layer.letterSpacing]
+  )
+
   const paths = useMemo(
     () =>
-      source.shapes.map((shape, index) => ({
+      spaced.shapes.map((shape, index) => ({
         key: index,
-        d: warpCommandsToPathData(shape.commands, source.bounds, layer.warp, tolerance),
+        d: warpCommandsToPathData(shape.commands, spaced.bounds, layer.warp, tolerance),
         fill: shape.fill,
         fillRule: shape.fillRule,
         opacity: shape.opacity,
       })),
-    [source.shapes, source.bounds, layer.warp, tolerance]
+    [spaced, layer.warp, tolerance]
   )
 
   const { x, y, scaleX, scaleY, rotation } = layer.transform

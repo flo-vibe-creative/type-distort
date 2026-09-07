@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { sourceSize } from '@/lib/document/types'
 import { canvasToLocal } from '@/lib/render/layerFrame'
+import { warpDomainSize } from '@/lib/render/layerSource'
 import { dragWarpHandle } from '@/lib/warp/handles'
 import type { Point } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
@@ -38,7 +38,7 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
       if (!layer) return
 
       const local = canvasToLocal(layer.transform, toCanvasPoint(event))
-      const patch = dragWarpHandle(layer.warp, sourceSize(layer.source), drag.handleId, local)
+      const patch = dragWarpHandle(layer.warp, warpDomainSize(layer), drag.handleId, local)
       if (patch) state.updateWarpParams(drag.layerId, patch)
     }
 

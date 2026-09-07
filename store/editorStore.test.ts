@@ -18,6 +18,7 @@ function fakeLayer(name: string, width = 100, height = 50): Layer {
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
+    letterSpacing: 0,
   }
 }
 
@@ -287,5 +288,30 @@ describe('되돌리기 / 다시하기', () => {
     store().replaceDocument({ canvas: { width: 10, height: 10, background: null }, layers: [] })
     expect(store().canUndo()).toBe(false)
     expect(store().document.canvas.width).toBe(10)
+  })
+})
+
+describe('자간', () => {
+  it('레이어마다 자간을 따로 둔다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().setLetterSpacing(a.id, 0.4)
+    expect(store().document.layers[0].letterSpacing).toBe(0.4)
+    expect(store().document.layers[1].letterSpacing).toBe(0)
+  })
+
+  it('숫자가 아닌 값이 들어오면 0으로 되돌린다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().setLetterSpacing(a.id, Number.NaN)
+    expect(store().document.layers[0].letterSpacing).toBe(0)
+  })
+
+  it('자간 변경도 되돌릴 수 있다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().setLetterSpacing(a.id, 0.5)
+    store().undo()
+    expect(store().document.layers[0].letterSpacing).toBe(0)
   })
 })

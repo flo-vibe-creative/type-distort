@@ -72,6 +72,9 @@
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
 | `components/editor/TransformHandles.tsx` | 배치 핸들 |
 | `lib/warp/handles.ts` | 왜곡 조작점 위치·드래그 계산 |
+| `lib/svg/glyphs.ts` | 도형을 글자 단위로 나누기 |
+| `lib/render/letterSpacing.ts` | 자간 적용 |
+| `lib/render/layerSource.ts` | 자간을 반영한 도형·왜곡 기준 크기 |
 | `hooks/useWarpInteraction.ts` | 왜곡 조작점 드래그 |
 | `components/editor/SliderField.tsx` | 슬라이더 |
 | `components/editor/WarpHandles.tsx` | 왜곡 핸들 (효과별 분기) |
@@ -166,6 +169,7 @@
 - [x] 드래그 중 낮은 정밀도 미리보기 → 놓으면 고정밀 재렌더
 - [x] 네 효과를 모두 조작해보고 커밋
 - [x] 아크 기준선 조절 추가 — 글자가 곡선의 어느 높이에 올라앉을지 핸들·슬라이더로 조절
+- [x] 자간 조절 추가 — 모든 효과에 공통으로 걸리는 글자 사이 간격 (벡터 레이어 전용)
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

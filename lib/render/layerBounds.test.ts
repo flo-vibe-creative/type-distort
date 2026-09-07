@@ -11,6 +11,7 @@ function layer(width: number, height: number): Layer {
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: width, maxY: height } },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
+    letterSpacing: 0,
   }
 }
 

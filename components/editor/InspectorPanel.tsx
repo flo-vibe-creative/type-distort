@@ -3,6 +3,7 @@
 import { NumberField } from '@/components/editor/NumberField'
 import { SliderField } from '@/components/editor/SliderField'
 import { Text } from '@/components/ui/Text'
+import { glyphCountOf } from '@/lib/render/letterSpacing'
 import { WARP_EFFECTS, WARP_TYPES } from '@/lib/warp/registry'
 import type { WarpType } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
@@ -38,6 +39,7 @@ export function InspectorPanel() {
   const updateTransform = useEditorStore((state) => state.updateTransform)
   const setWarpType = useEditorStore((state) => state.setWarpType)
   const updateWarpParams = useEditorStore((state) => state.updateWarpParams)
+  const setLetterSpacing = useEditorStore((state) => state.setLetterSpacing)
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-border">
@@ -137,6 +139,33 @@ export function InspectorPanel() {
                 </option>
               ))}
             </select>
+          </PanelSection>
+
+          <PanelSection title="글자">
+            {layer.source.kind === 'vector' ? (
+              <>
+                <SliderField
+                  label="자간"
+                  min={-0.3}
+                  max={1.5}
+                  step={0.01}
+                  suffix="%"
+                  displayScale={100}
+                  value={layer.letterSpacing}
+                  onChange={(value) => setLetterSpacing(layer.id, value)}
+                />
+                <Text variant="caption12" color="text-fg-tertiary">
+                  {glyphCountOf(layer.source.shapes)}개의 글자로 나뉘었습니다. 숫자가 실제와
+                  다르면 글자끼리 겹쳐 있는 것이니, 디자인 툴에서 자간을 조금 벌려 다시
+                  내보내 주세요.
+                </Text>
+              </>
+            ) : (
+              <Text variant="caption12" color="text-fg-tertiary">
+                이미지 레이어는 글자 단위를 알 수 없어 자간을 조절할 수 없습니다. SVG로 가져오면
+                조절할 수 있습니다.
+              </Text>
+            )}
           </PanelSection>
 
           {WARP_EFFECTS[layer.warp.type].sliders.length > 0 && (

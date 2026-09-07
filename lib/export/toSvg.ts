@@ -1,5 +1,6 @@
 import type { EditorDocument, Layer } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
+import { spacedVectorSource } from '@/lib/render/layerSource'
 import { warpCommandsToPathData } from '@/lib/render/warpShape'
 
 /**
@@ -62,12 +63,12 @@ export function documentToSvgMarkup(
     const transform = escapeAttribute(transformAttribute(layer))
 
     if (layer.source.kind === 'vector') {
-      const source = layer.source
-      const paths = source.shapes
+      const spaced = spacedVectorSource(layer.source, layer.letterSpacing)
+      const paths = spaced.shapes
         .map((shape) => {
           const d = warpCommandsToPathData(
             shape.commands,
-            source.bounds,
+            spaced.bounds,
             layer.warp,
             EXPORT_TOLERANCE
           )

@@ -57,6 +57,7 @@ interface EditorState {
   updateTransform: (id: string, patch: Partial<LayerTransform>) => void
   setWarpType: (id: string, type: WarpType) => void
   updateWarpParams: (id: string, patch: Record<string, unknown>) => void
+  setLetterSpacing: (id: string, spacing: number) => void
   setCanvasSize: (width: number, height: number) => void
   setCanvasBackground: (background: string | null) => void
   /** 보이는 레이어 전체에 맞춰 캔버스를 자른다 */
@@ -214,6 +215,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       mapLayer(state, id, (layer) => ({
         ...layer,
         warp: { ...layer.warp, params: { ...layer.warp.params, ...patch } } as WarpState,
+      }))
+    ),
+
+  setLetterSpacing: (id, spacing) =>
+    set((state) =>
+      mapLayer(state, id, (layer) => ({
+        ...layer,
+        letterSpacing: Number.isFinite(spacing) ? spacing : 0,
       }))
     ),
 

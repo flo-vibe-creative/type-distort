@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
-import { sourceSize, type Layer } from '@/lib/document/types'
+import type { Layer } from '@/lib/document/types'
 import { localToCanvas } from '@/lib/render/layerFrame'
+import { warpDomainSize } from '@/lib/render/layerSource'
 import { warpHandles } from '@/lib/warp/handles'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp } from '@/lib/warp/registry'
@@ -20,7 +21,7 @@ interface WarpHandlesProps {
 
 /** 효과별 안내선 — 지금 무엇을 조절하고 있는지 눈으로 알 수 있게 한다 */
 function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) => Point }) {
-  const size = sourceSize(layer.source)
+  const size = warpDomainSize(layer)
 
   if (layer.warp.type === 'arc') {
     const baseline = layer.warp.params.baseline
@@ -108,7 +109,7 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
 }
 
 export function WarpHandles({ layer, zoom, onHandleDown }: WarpHandlesProps) {
-  const size = sourceSize(layer.source)
+  const size = warpDomainSize(layer)
   const toCanvas = useMemo(
     () => (point: Point) => localToCanvas(layer.transform, point),
     [layer.transform]

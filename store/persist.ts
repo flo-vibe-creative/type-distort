@@ -21,6 +21,8 @@ interface StoredLayer {
   visible: boolean
   transform: LayerTransform
   warp: WarpState
+  /** 예전 저장본에는 없을 수 있어 되살릴 때 0으로 채운다 */
+  letterSpacing?: number
   source: StoredSource
 }
 
@@ -44,6 +46,7 @@ export function serializeDocument(document: EditorDocument): StoredDocument {
       visible: layer.visible,
       transform: layer.transform,
       warp: layer.warp,
+      letterSpacing: layer.letterSpacing,
       source:
         layer.source.kind === 'vector'
           ? { kind: 'vector', shapes: layer.source.shapes, bounds: layer.source.bounds }
@@ -84,6 +87,7 @@ function restoreLayer(stored: StoredLayer, images: RestoredImages): Layer | null
     visible: stored.visible !== false,
     transform: stored.transform,
     warp,
+    letterSpacing: Number.isFinite(stored.letterSpacing) ? (stored.letterSpacing as number) : 0,
   }
 
   if (stored.source.kind === 'vector') {
