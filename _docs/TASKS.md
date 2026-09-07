@@ -7,9 +7,9 @@
 | 구분 | 개수 |
 | --- | --- |
 | 전체 기능 | 10 |
-| ✅ 완료 | 7 |
+| ✅ 완료 | 8 |
 | 🔄 진행 중 | 0 |
-| ⏳ 예정 | 3 |
+| ⏳ 예정 | 2 |
 
 | # | 기능 | Status |
 | --- | --- | --- |
@@ -20,7 +20,7 @@
 | 5 | 레이어 시스템 & 캔버스 화면 | ✅ 완료 |
 | 6 | 배치 편집 (이동·크기·회전) | ✅ 완료 |
 | 7 | 왜곡 편집 UI (핸들·슬라이더) | ✅ 완료 |
-| 8 | 내보내기 (SVG·PNG·JPEG) | ⏳ 예정 |
+| 8 | 내보내기 (SVG·PNG·JPEG) | ✅ 완료 |
 | 9 | 되돌리기 & 자동 저장 | ⏳ 예정 |
 | 10 | 마무리 (에러 안내 · 레퍼런스 재현 검증) | ⏳ 예정 |
 
@@ -44,8 +44,10 @@
 | `lib/svg/serialize.ts` | 점열 → path `d` 문자열 |
 | `lib/raster/loadImage.ts` | 이미지 로드·4096px 제한 |
 | `lib/raster/glRenderer.ts` | WebGL 격자 메쉬 렌더러 |
-| `lib/export/toSvg.ts` | SVG 내보내기 |
-| `lib/export/toRaster.ts` | PNG·JPEG 내보내기 |
+| `lib/export/toSvg.ts` | SVG 마크업 생성 |
+| `lib/export/exportDocument.ts` | 형식별 내보내기·다운로드 |
+| `lib/render/canvasBounds.ts` | 캔버스 위 내용 범위 계산 |
+
 | `lib/document/types.ts` | 문서·레이어 데이터 구조 |
 | `lib/document/createLayer.ts` | 가져온 파일 → 레이어 변환 |
 | `lib/document/importFiles.ts` | 여러 파일 일괄 가져오기 + 실패 수집 |
@@ -164,15 +166,15 @@
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 
-**Status:** ⏳ 예정
+**Status:** ✅ 완료
 **목표:** 작업 결과를 원하는 형식으로 저장할 수 있고, 형식별 한계가 미리 안내된다.
 
-- [ ] `lib/export/toSvg.ts` — 벡터 레이어는 왜곡된 경로로, 이미지 레이어는 비트맵으로 구워 `<image>` 삽입
-- [ ] `lib/export/toRaster.ts` — 캔버스 크기 × 배율(1x/2x/4x)로 PNG 렌더, 투명 배경 on/off
-- [ ] JPEG — 품질 슬라이더, 배경색 지정 (투명 불가 안내)
-- [ ] `components/editor/ExportDialog.tsx` — 형식·옵션 선택, 이미지 레이어 포함 시 SVG 경고 문구
-- [ ] `내용에 맞춰 자르기` — 보이는 레이어 전체 경계로 캔버스 크기 재조정 (`lib/geometry/bbox.ts`, 경계 계산 테스트)
-- [ ] 세 형식 모두 실제로 저장해 열어보고 커밋
+- [x] `lib/export/toSvg.ts` — 벡터 레이어는 왜곡된 경로로, 이미지 레이어는 비트맵으로 구워 `<image>` 삽입
+- [x] `lib/export/exportDocument.ts` — 같은 SVG 마크업을 그림으로 구워 PNG 렌더 (배율 1x/2x/4x, 투명 배경 on/off)
+- [x] JPEG — 품질 슬라이더, 배경색 지정 (투명 불가 안내)
+- [x] `components/editor/ExportDialog.tsx` — 형식·옵션 선택, 이미지 레이어 포함 시 SVG 경고 문구
+- [x] `내용에 맞춰 자르기` — 보이는 레이어 전체 경계로 캔버스 크기 재조정 (`lib/geometry/bbox.ts`, 경계 계산 테스트)
+- [x] 세 형식 모두 실제로 저장해 열어보고 커밋
 
 ## 기능 9. 되돌리기 & 자동 저장
 

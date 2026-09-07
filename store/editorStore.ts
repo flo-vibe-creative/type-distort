@@ -6,6 +6,7 @@ import type {
   LayerTransform,
 } from '@/lib/document/types'
 import { sourceSize } from '@/lib/document/types'
+import { contentBounds } from '@/lib/render/canvasBounds'
 import { createWarp, type WarpState } from '@/lib/warp/registry'
 import type { WarpType } from '@/lib/warp/types'
 
@@ -54,6 +55,8 @@ interface EditorState {
   updateWarpParams: (id: string, patch: Record<string, unknown>) => void
   setCanvasSize: (width: number, height: number) => void
   setCanvasBackground: (background: string | null) => void
+  /** 보이는 레이어 전체에 맞춰 캔버스를 자른다 */
+  fitCanvasToContent: (padding?: number) => void
   setZoom: (zoom: number) => void
   panBy: (dx: number, dy: number) => void
   setViewport: (viewport: Partial<Viewport>) => void
@@ -217,6 +220,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({
       document: { ...state.document, canvas: { ...state.document.canvas, background } },
     })),
+
+  fitCanvasToContent: (padding = 0) => {
+    const { document } = get()
+    const bounds = contentBounds(document)
+    if (!bounds) return
+
+    const offsetX = bounds.minX - padding
+    const offsetY = bounds.minY - padding
+    set({
+      document: {
+        canvas: {
+          ...document.canvas,
+          width: Math.max(1, Math.round(bounds.maxX - bounds.minX + padding * 2)),
+          height: Math.max(1, Math.round(bounds.maxY - bounds.minY + padding * 2)),
+        },
+        // 캔버스를 옮긴 만큼 레이어도 함께 옮겨 화면에 보이던 그대로를 유지한다
+        layers: document.layers.map((layer) => ({
+          ...layer,
+          transform: {
+            ...layer.transform,
+            x: layer.transform.x - offsetX,
+            y: layer.transform.y - offsetY,
+          },
+        })),
+      },
+    })
+  },
 
   setZoom: (zoom) =>
     set((state) => ({

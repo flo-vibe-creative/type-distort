@@ -185,3 +185,37 @@ describe('편집 모드', () => {
     expect(store().mode).toBe('transform')
   })
 })
+
+describe('내용에 맞춰 자르기', () => {
+  it('보이는 레이어 전체에 맞춰 캔버스를 줄이고 레이어를 그만큼 옮긴다', () => {
+    const a = fakeLayer('A', 100, 50)
+    store().addLayers([a])
+    store().updateTransform(a.id, { x: 300, y: 200 })
+    store().fitCanvasToContent()
+
+    expect(store().document.canvas).toMatchObject({ width: 100, height: 50 })
+    expect(store().document.layers[0].transform).toMatchObject({ x: 0, y: 0 })
+  })
+
+  it('여백을 주면 그만큼 넉넉하게 자른다', () => {
+    const a = fakeLayer('A', 100, 50)
+    store().addLayers([a])
+    store().fitCanvasToContent(20)
+    expect(store().document.canvas).toMatchObject({ width: 140, height: 90 })
+    expect(store().document.layers[0].transform).toMatchObject({ x: 20, y: 20 })
+  })
+
+  it('숨긴 레이어는 세지 않는다', () => {
+    const [a, b] = [fakeLayer('A', 100, 50), fakeLayer('B', 400, 300)]
+    store().addLayers([a, b])
+    store().toggleLayerVisibility(b.id)
+    store().fitCanvasToContent()
+    expect(store().document.canvas).toMatchObject({ width: 100, height: 50 })
+  })
+
+  it('보이는 레이어가 없으면 아무것도 바꾸지 않는다', () => {
+    const before = store().document
+    store().fitCanvasToContent()
+    expect(store().document).toBe(before)
+  })
+})

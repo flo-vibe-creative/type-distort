@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { ExportDialog } from '@/components/editor/ExportDialog'
 import { Text } from '@/components/ui/Text'
 import { useFileImport } from '@/hooks/useFileImport'
 import { supportedImportLabel } from '@/lib/document/importFiles'
@@ -8,6 +9,7 @@ import { supportedImportLabel } from '@/lib/document/importFiles'
 export function Toolbar() {
   const inputRef = useRef<HTMLInputElement>(null)
   const { importFileList, importing } = useFileImport()
+  const [exportOpen, setExportOpen] = useState(false)
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
@@ -45,14 +47,14 @@ export function Toolbar() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          disabled
-          className="rounded-md border border-border px-3 py-1.5 opacity-40"
-          title="다음 단계에서 구현합니다"
+          onClick={() => setExportOpen(true)}
+          className="rounded-md border border-border px-3 py-1.5 hover:bg-surface-minimal"
         >
           <Text variant="ui13" as="span">
             내보내기
           </Text>
         </button>
+        {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
       </div>
     </header>
   )
