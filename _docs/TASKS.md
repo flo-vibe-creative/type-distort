@@ -78,6 +78,8 @@
 | `lib/render/letterSpacing.ts` | 자간 적용 |
 | `lib/render/layerSource.ts` | 자간을 반영한 도형·왜곡 기준 크기 |
 | `lib/render/marquee.ts` | 영역 안 레이어 골라내기 |
+| `lib/render/warpSelection.ts` | 영역 안 조작점·줄 단위 골라내기 |
+| `hooks/useWarpMarquee.ts` | 점 편집 중 영역 선택 |
 | `hooks/useLayerMarquee.ts` | 드래그로 영역 그려 레이어 선택 |
 | `hooks/useWarpInteraction.ts` | 왜곡 조작점 드래그 |
 | `components/editor/SliderField.tsx` | 슬라이더 |
@@ -178,6 +180,8 @@
 - [x] 조작점 여러 개 선택 — Shift로 더하고 빼며, 고른 점들을 함께 이동 (메쉬·퍼스펙티브)
 - [x] 드래그로 영역을 그려 여러 조작점 한 번에 선택
 - [x] 배치/왜곡 탭을 없애고 한 패널로 통합 — 클릭 즉시 이동, 빈 곳 드래그로 레이어 여러 개 선택
+- [x] 점 편집 상태 추가 — 더블클릭으로 들어가 어디서든 드래그로 조작점을 감싸 고르기
+- [x] 메쉬 격자의 가로줄·세로줄을 눌러 그 줄의 네 점 통째로 선택
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

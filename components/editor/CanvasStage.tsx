@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayerView } from '@/components/editor/LayerView'
 import { MultiSelectionOutline, SelectionFrame } from '@/components/editor/SelectionFrame'
-import { WarpHandles } from '@/components/editor/WarpHandles'
+import { WarpHandles, type MeshLine } from '@/components/editor/WarpHandles'
 import { Text } from '@/components/ui/Text'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
 import { useLayerMarquee } from '@/hooks/useLayerMarquee'
 import { useWarpInteraction } from '@/hooks/useWarpInteraction'
+import { useWarpMarquee } from '@/hooks/useWarpMarquee'
 import { boundsOfLayers } from '@/lib/render/canvasBounds'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
+import { meshColumnHandleIds, meshRowHandleIds } from '@/lib/render/warpSelection'
 import type { Point } from '@/lib/warp/types'
 import { MAX_ZOOM, MIN_ZOOM, useEditorStore } from '@/store/editorStore'
 
@@ -25,6 +27,7 @@ export function CanvasStage() {
   const viewport = useEditorStore((state) => state.viewport)
   const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
   const selectedWarpHandles = useEditorStore((state) => state.selectedWarpHandles)
+  const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   const setViewport = useEditorStore((state) => state.setViewport)
   const selectLayers = useEditorStore((state) => state.selectLayers)
   const toggleLayerSelection = useEditorStore((state) => state.toggleLayerSelection)
@@ -49,6 +52,7 @@ export function CanvasStage() {
   const interaction = useLayerInteraction(toCanvasPoint)
   const warpInteraction = useWarpInteraction(toCanvasPoint)
   const marquee = useLayerMarquee(toCanvasPoint)
+  const warpMarquee = useWarpMarquee(toCanvasPoint)
   const dragging = interaction.dragging || warpInteraction.dragging
 
   const fitToView = useCallback(() => {
@@ -149,6 +153,17 @@ export function CanvasStage() {
     const layerId = hit?.getAttribute('data-layer-id') ?? null
     const state = useEditorStore.getState()
 
+    // 점 편집 중에는 어디서 끌든 조작점을 감싸 고른다 (레이어는 움직이지 않는다)
+    if (state.editingWarpLayerId) {
+      if (layerId && layerId !== state.editingWarpLayerId) {
+        selectLayers([layerId])
+        interaction.beginMove(layerId, toCanvasPoint(event))
+        return
+      }
+      warpMarquee.beginWarpMarquee(toCanvasPoint(event), event.shiftKey)
+      return
+    }
+
     // 빈 곳에서 끌면 사각형을 그려 레이어 여러 개를 고른다
     if (!layerId) {
       marquee.beginMarquee(toCanvasPoint(event), event.shiftKey)
@@ -163,6 +178,12 @@ export function CanvasStage() {
     // 이미 여러 개를 골라 둔 상태에서 그중 하나를 누르면 선택을 유지한 채 함께 옮긴다
     if (!state.selectedLayerIds.includes(layerId)) selectLayers([layerId])
     interaction.beginMove(layerId, toCanvasPoint(event))
+  }
+
+  const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const hit = (event.target as HTMLElement).closest('[data-layer-id]')
+    const layerId = hit?.getAttribute('data-layer-id')
+    if (layerId) useEditorStore.getState().beginWarpEditing(layerId)
   }
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -194,6 +215,7 @@ export function CanvasStage() {
       onPointerMove={onPointerMove}
       onPointerUp={stopPanning}
       onPointerCancel={stopPanning}
+      onDoubleClick={onDoubleClick}
     >
       <div
         className="absolute left-0 top-0 shadow-[0_2px_16px_rgba(0,0,0,0.08)]"
@@ -238,34 +260,65 @@ export function CanvasStage() {
             />
           )}
 
+          {warpMarquee.warpMarqueeRect && (
+            <rect
+              x={warpMarquee.warpMarqueeRect.minX}
+              y={warpMarquee.warpMarqueeRect.minY}
+              width={warpMarquee.warpMarqueeRect.maxX - warpMarquee.warpMarqueeRect.minX}
+              height={warpMarquee.warpMarqueeRect.maxY - warpMarquee.warpMarqueeRect.minY}
+              fill="rgba(123, 63, 255, 0.08)"
+              stroke="#7b3fff"
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+
           {multiBounds && <MultiSelectionOutline bounds={multiBounds} />}
 
-          {selectedLayers.map((layer) => (
-            <SelectionFrame
-              key={layer.id}
-              layer={layer}
-              zoom={viewport.zoom}
-              showHandles={selectedLayers.length === 1}
-              onResizeStart={(handle: HandleId, event) => {
-                event.stopPropagation()
-                interaction.beginResize(layer.id, handle, toCanvasPoint(event))
-              }}
-              onRotateStart={(event) => {
-                event.stopPropagation()
-                interaction.beginRotate(layer.id, toCanvasPoint(event))
-              }}
-            />
-          ))}
+          {!editingWarpLayerId &&
+            selectedLayers.map((layer) => (
+              <SelectionFrame
+                key={layer.id}
+                layer={layer}
+                zoom={viewport.zoom}
+                showHandles={selectedLayers.length === 1}
+                onResizeStart={(handle: HandleId, event) => {
+                  event.stopPropagation()
+                  interaction.beginResize(layer.id, handle, toCanvasPoint(event))
+                }}
+                onRotateStart={(event) => {
+                  event.stopPropagation()
+                  interaction.beginRotate(layer.id, toCanvasPoint(event))
+                }}
+              />
+            ))}
 
           {/* 왜곡 조작점은 하나만 골랐을 때, 선택 상자 위에 그려 먼저 잡히게 한다 */}
           {singleSelected && singleSelected.visible && (
             <WarpHandles
               layer={singleSelected}
               zoom={viewport.zoom}
+              editing={editingWarpLayerId === singleSelected.id}
               selectedHandleIds={selectedWarpHandles}
               onHandleDown={(handleId, event) => {
                 event.stopPropagation()
                 warpInteraction.beginWarpDrag(singleSelected.id, handleId, event.shiftKey)
+              }}
+              onMeshLineDown={(line: MeshLine, event) => {
+                event.stopPropagation()
+                const ids =
+                  line.kind === 'row' ? meshRowHandleIds(line.index) : meshColumnHandleIds(line.index)
+                const additive = event.shiftKey
+                // 줄을 눌렀다가 그대로 끌면 영역 선택, 그냥 놓으면 그 줄이 통째로 골라진다
+                warpMarquee.beginWarpMarquee(toCanvasPoint(event), additive, () => {
+                  const state = useEditorStore.getState()
+                  const base = additive ? state.selectedWarpHandles : []
+                  state.setWarpHandleSelection([
+                    ...base,
+                    ...ids.filter((id) => !base.includes(id)),
+                  ])
+                })
               }}
             />
           )}

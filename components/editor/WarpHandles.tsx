@@ -11,20 +11,55 @@ import type { Point } from '@/lib/warp/types'
 
 /** 화면에서 보이는 조작점 지름 (px) */
 const HANDLE_SIZE = 10
+/** 점 편집 중에는 잡기 쉽도록 조금 키운다 */
+const EDITING_HANDLE_SIZE = 13
 /** 골라 둔 점은 조금 더 크게 그려 눈에 띄게 한다 */
-const SELECTED_HANDLE_SIZE = 13
+const SELECTED_EXTRA = 3
+/** 격자 줄을 잡을 수 있는 두께 (px) — 선 자체는 얇게 보이지만 이만큼은 눌린다 */
+const LINE_HIT_WIDTH = 7
 const ACCENT = '#7b3fff'
+
+export type MeshLine = { kind: 'row' | 'column'; index: number }
 
 interface WarpHandlesProps {
   layer: Layer
   zoom: number
+  /** 점 편집 중인지 — 격자 줄을 눌러 통째로 고를 수 있게 된다 */
+  editing: boolean
   /** 여러 개를 골라 함께 옮길 때 골라 둔 조작점들 */
   selectedHandleIds: readonly string[]
   onHandleDown: (handleId: string, event: React.PointerEvent) => void
+  onMeshLineDown: (line: MeshLine, event: React.PointerEvent) => void
+}
+
+function dashedLine(points: readonly Point[], key: string | number) {
+  return (
+    <polyline
+      key={key}
+      points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+      fill="none"
+      stroke={ACCENT}
+      strokeWidth={1}
+      strokeDasharray="4 3"
+      vectorEffect="non-scaling-stroke"
+    />
+  )
 }
 
 /** 효과별 안내선 — 지금 무엇을 조절하고 있는지 눈으로 알 수 있게 한다 */
-function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) => Point }) {
+function GuideLines({
+  layer,
+  toCanvas,
+  editing,
+  hitWidth,
+  onMeshLineDown,
+}: {
+  layer: Layer
+  toCanvas: (p: Point) => Point
+  editing: boolean
+  hitWidth: number
+  onMeshLineDown: (line: MeshLine, event: React.PointerEvent) => void
+}) {
   const size = warpDomainSize(layer)
 
   if (layer.warp.type === 'arc') {
@@ -32,16 +67,7 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
     const samples = Array.from({ length: 49 }, (_, index) =>
       toCanvas(applyWarp(layer.warp, index / 48, baseline, size))
     )
-    return (
-      <polyline
-        points={samples.map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="none"
-        stroke={ACCENT}
-        strokeWidth={1}
-        strokeDasharray="4 3"
-        vectorEffect="non-scaling-stroke"
-      />
-    )
+    return dashedLine(samples, 'arc')
   }
 
   if (layer.warp.type === 'bulge') {
@@ -55,16 +81,7 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
         y: center.y + Math.sin(angle) * radius,
       })
     })
-    return (
-      <polyline
-        points={circle.map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="none"
-        stroke={ACCENT}
-        strokeWidth={1}
-        strokeDasharray="4 3"
-        vectorEffect="non-scaling-stroke"
-      />
-    )
+    return dashedLine(circle, 'bulge')
   }
 
   if (layer.warp.type === 'perspective') {
@@ -84,30 +101,38 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
     )
   }
 
-  // 메쉬 — 제어점을 가로줄과 세로줄로 이어 격자를 보여준다
+  // 메쉬 — 제어점을 가로줄과 세로줄로 이어 격자를 보여준다.
+  // 점 편집 중에는 줄을 눌러 그 줄의 네 점을 통째로 고를 수 있다.
   const grid = layer.warp.params.points.map((point) =>
     toCanvas({ x: point.x * size.width, y: point.y * size.height })
   )
-  const lines: string[] = []
+  const lines: { line: MeshLine; points: Point[] }[] = []
   for (let index = 0; index < MESH_SIZE; index += 1) {
-    const row = Array.from({ length: MESH_SIZE }, (_, col) => grid[index * MESH_SIZE + col])
-    const column = Array.from({ length: MESH_SIZE }, (_, r) => grid[r * MESH_SIZE + index])
-    lines.push(row.map((p) => `${p.x},${p.y}`).join(' '))
-    lines.push(column.map((p) => `${p.x},${p.y}`).join(' '))
+    lines.push({
+      line: { kind: 'row', index },
+      points: Array.from({ length: MESH_SIZE }, (_, col) => grid[index * MESH_SIZE + col]),
+    })
+    lines.push({
+      line: { kind: 'column', index },
+      points: Array.from({ length: MESH_SIZE }, (_, row) => grid[row * MESH_SIZE + index]),
+    })
   }
+
   return (
     <>
-      {lines.map((points, index) => (
-        <polyline
-          key={index}
-          points={points}
-          fill="none"
-          stroke={ACCENT}
-          strokeWidth={1}
-          strokeDasharray="4 3"
-          vectorEffect="non-scaling-stroke"
-        />
-      ))}
+      {lines.map(({ line, points }) => dashedLine(points, `${line.kind}-${line.index}`))}
+      {editing &&
+        lines.map(({ line, points }) => (
+          <polyline
+            key={`hit-${line.kind}-${line.index}`}
+            points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke="transparent"
+            strokeWidth={hitWidth}
+            style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+            onPointerDown={(event) => onMeshLineDown(line, event)}
+          />
+        ))}
     </>
   )
 }
@@ -115,8 +140,10 @@ function GuideLines({ layer, toCanvas }: { layer: Layer; toCanvas: (p: Point) =>
 export function WarpHandles({
   layer,
   zoom,
+  editing,
   selectedHandleIds,
   onHandleDown,
+  onMeshLineDown,
 }: WarpHandlesProps) {
   const size = warpDomainSize(layer)
   const toCanvas = useMemo(
@@ -124,12 +151,17 @@ export function WarpHandles({
     [layer.transform]
   )
   const handles = useMemo(() => warpHandles(layer.warp, size), [layer.warp, size])
-  const radius = HANDLE_SIZE / 2 / zoom
-  const selectedRadius = SELECTED_HANDLE_SIZE / 2 / zoom
+  const baseSize = editing ? EDITING_HANDLE_SIZE : HANDLE_SIZE
 
   return (
     <g>
-      <GuideLines layer={layer} toCanvas={toCanvas} />
+      <GuideLines
+        layer={layer}
+        toCanvas={toCanvas}
+        editing={editing}
+        hitWidth={LINE_HIT_WIDTH / zoom}
+        onMeshLineDown={onMeshLineDown}
+      />
 
       {handles.map((handle) => {
         const point = toCanvas(handle.local)
@@ -141,7 +173,7 @@ export function WarpHandles({
             key={handle.id}
             cx={point.x}
             cy={point.y}
-            r={selected ? selectedRadius : radius}
+            r={(baseSize + (selected ? SELECTED_EXTRA : 0)) / 2 / zoom}
             fill={filled ? ACCENT : '#ffffff'}
             stroke={selected ? '#ffffff' : ACCENT}
             strokeWidth={selected ? 2 : 1.5}

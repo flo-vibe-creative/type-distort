@@ -36,13 +36,17 @@ export function useEditorKeyboard() {
       }
 
       if (event.key === 'Escape') {
-        // 골라 둔 조작점 → 레이어 선택 순서로 한 단계씩 빠져나온다
+        // 골라 둔 조작점 → 점 편집 → 레이어 선택 순서로 한 단계씩 빠져나온다
         if (state.selectedWarpHandles.length > 0) state.clearWarpHandleSelection()
+        else if (state.editingWarpLayerId) state.endWarpEditing()
         else state.selectLayers([])
         return
       }
 
       if (ids.length === 0) return
+
+      // 점 편집 중에는 방향키와 삭제가 레이어를 건드리지 않게 한다
+      if (state.editingWarpLayerId) return
 
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()

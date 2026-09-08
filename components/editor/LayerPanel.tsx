@@ -28,6 +28,8 @@ export function LayerPanel() {
   const toggleLayerVisibility = useEditorStore((state) => state.toggleLayerVisibility)
   const reorderLayer = useEditorStore((state) => state.reorderLayer)
   const removeLayers = useEditorStore((state) => state.removeLayers)
+  const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
+  const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
 
   // 배열 뒤쪽이 화면에서 위에 그려지므로 목록은 뒤집어 보여준다
   const ordered = [...layers].reverse()
@@ -65,6 +67,7 @@ export function LayerPanel() {
                     if (event.shiftKey) toggleLayerSelection(layer.id)
                     else selectLayers([layer.id])
                   }}
+                  onDoubleClick={() => beginWarpEditing(layer.id)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
@@ -72,7 +75,11 @@ export function LayerPanel() {
                     }
                   }}
                   className={`group flex w-full items-center gap-2 px-3 py-2 text-left ${
-                    selected ? 'bg-surface-primary' : 'hover:bg-surface-minimal'
+                    layer.id === editingWarpLayerId
+                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-800'
+                      : selected
+                        ? 'bg-surface-primary'
+                        : 'hover:bg-surface-minimal'
                   }`}
                 >
                   <LayerKindIcon layer={layer} />

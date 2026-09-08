@@ -403,3 +403,51 @@ describe('왜곡 조작점 선택', () => {
     expect(store().past.length).toBe(stepsBefore)
   })
 })
+
+describe('점 편집 상태', () => {
+  it('처음에는 점 편집 중이 아니다', () => {
+    expect(store().editingWarpLayerId).toBeNull()
+  })
+
+  it('점 편집에 들어가면 그 레이어만 골라진다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().beginWarpEditing(b.id)
+    expect(store().editingWarpLayerId).toBe(b.id)
+    expect(store().selectedLayerIds).toEqual([b.id])
+  })
+
+  it('같은 레이어를 다시 고르는 것은 편집 상태를 깨지 않는다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().beginWarpEditing(a.id)
+    store().selectLayers([a.id])
+    expect(store().editingWarpLayerId).toBe(a.id)
+  })
+
+  it('다른 레이어로 넘어가면 점 편집에서 빠져나온다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().beginWarpEditing(a.id)
+    store().selectLayers([b.id])
+    expect(store().editingWarpLayerId).toBeNull()
+  })
+
+  it('나가면 골라 둔 점도 함께 비워진다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().beginWarpEditing(a.id)
+    store().setWarpHandleSelection(['mesh-1', 'mesh-2'])
+    store().endWarpEditing()
+    expect(store().editingWarpLayerId).toBeNull()
+    expect(store().selectedWarpHandles).toEqual([])
+  })
+
+  it('레이어를 지우면 점 편집도 끝난다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().beginWarpEditing(a.id)
+    store().removeLayers([a.id])
+    expect(store().editingWarpLayerId).toBeNull()
+  })
+})

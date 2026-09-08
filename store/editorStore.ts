@@ -49,6 +49,11 @@ interface EditorState {
    * 화면 조작을 위한 값이라 문서에 저장되거나 되돌리기에 쌓이지 않는다.
    */
   selectedWarpHandles: string[]
+  /**
+   * 점 편집 중인 레이어. 이 상태에서는 전체 선택 상자가 숨고,
+   * 캔버스에서 끄는 동작이 레이어 이동이 아니라 조작점 고르기가 된다.
+   */
+  editingWarpLayerId: string | null
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
@@ -72,6 +77,8 @@ interface EditorState {
   setViewport: (viewport: Partial<Viewport>) => void
   setWarpHandleSelection: (handleIds: string[]) => void
   clearWarpHandleSelection: () => void
+  beginWarpEditing: (layerId: string) => void
+  endWarpEditing: () => void
 
   /** 드래그 한 번을 되돌리기 한 단계로 묶는다 */
   beginGesture: () => void
@@ -122,6 +129,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   future: [],
   historyPaused: false,
   selectedWarpHandles: [],
+  editingWarpLayerId: null,
 
   reset: () =>
     set({
@@ -132,6 +140,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: [],
       historyPaused: false,
       selectedWarpHandles: [],
+      editingWarpLayerId: null,
     }),
 
   addLayers: (incoming) =>
@@ -157,6 +166,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...withHistory(state, { ...state.document, layers: [...layers, ...placed] }),
         selectedLayerIds: placed.map((layer) => layer.id),
         selectedWarpHandles: [],
+        editingWarpLayerId: null,
       }
     }),
 
@@ -174,10 +184,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...withHistory(state, { ...state.document, layers }),
         selectedLayerIds: neighbour ? [neighbour.id] : [],
         selectedWarpHandles: [],
+        editingWarpLayerId: null,
       }
     }),
 
-  selectLayers: (ids) => set({ selectedLayerIds: [...ids], selectedWarpHandles: [] }),
+  selectLayers: (ids) =>
+    set((state) => ({
+      selectedLayerIds: [...ids],
+      selectedWarpHandles: [],
+      // 다른 레이어로 넘어가면 점 편집에서 빠져나온다
+      editingWarpLayerId:
+        ids.length === 1 && ids[0] === state.editingWarpLayerId ? state.editingWarpLayerId : null,
+    })),
 
   toggleLayerSelection: (id) =>
     set((state) => ({
@@ -185,6 +203,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? state.selectedLayerIds.filter((item) => item !== id)
         : [...state.selectedLayerIds, id],
       selectedWarpHandles: [],
+      editingWarpLayerId: null,
     })),
 
   toggleLayerVisibility: (id) =>
@@ -330,6 +349,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearWarpHandleSelection: () =>
     set((state) => (state.selectedWarpHandles.length === 0 ? {} : { selectedWarpHandles: [] })),
 
+  beginWarpEditing: (layerId) =>
+    set({ editingWarpLayerId: layerId, selectedLayerIds: [layerId], selectedWarpHandles: [] }),
+
+  endWarpEditing: () => set({ editingWarpLayerId: null, selectedWarpHandles: [] }),
+
   beginGesture: () =>
     set((state) => {
       if (state.historyPaused) return {}
@@ -375,5 +399,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       historyPaused: false,
       selectedLayerIds: [],
       selectedWarpHandles: [],
+      editingWarpLayerId: null,
     }),
 }))

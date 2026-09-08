@@ -11,8 +11,8 @@ import { useEditorStore } from '@/store/editorStore'
 /** 효과마다 캔버스에서 무엇을 끌면 되는지 알려준다 */
 const WARP_GUIDE: Record<WarpType, string> = {
   arc: '양 끝의 흰 점을 위아래로 끌면 휘는 정도가 바뀌고, 가운데 보라색 점을 끌면 글자가 곡선의 어디에 올라앉을지(기준선)가 바뀝니다. 아래로 내리면 곡선 위에 서고, 위로 올리면 매달립니다.',
-  mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. Shift를 누른 채 점을 누르면 여러 개를 골라 함께 옮길 수 있고, Shift로 다시 누르면 선택에서 빠집니다. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
-  perspective: '네 모서리 점을 끌어 원근을 만듭니다. Shift를 누른 채 누르면 여러 모서리를 골라 함께 옮길 수 있습니다. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
+  mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. 여러 개를 한꺼번에 다루려면 레이어를 더블클릭해 점 편집으로 들어가세요. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
+  perspective: '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
   bulge: '가운데 점을 끌어 중심을 옮기고, 오른쪽 점을 끌어 영향 범위를 정합니다. 세기를 음수로 하면 오목해집니다.',
 }
 
@@ -46,9 +46,13 @@ export function InspectorPanel() {
   const setWarpType = useEditorStore((state) => state.setWarpType)
   const updateWarpParams = useEditorStore((state) => state.updateWarpParams)
   const setLetterSpacing = useEditorStore((state) => state.setLetterSpacing)
+  const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
+  const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
+  const endWarpEditing = useEditorStore((state) => state.endWarpEditing)
 
   const selected = layers.filter((layer) => selectedLayerIds.includes(layer.id))
   const layer = selected.length === 1 ? selected[0] : null
+  const editing = layer !== null && layer.id === editingWarpLayerId
 
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-border">
@@ -68,6 +72,43 @@ export function InspectorPanel() {
           <br />
           세부 설정은 하나만 골랐을 때 조절합니다
         </EmptyMessage>
+      )}
+
+      {layer && editing && (
+        <div className="border-b border-border bg-blue-50 px-4 py-3">
+          <div className="mb-1 flex items-center justify-between">
+            <Text variant="ui13" as="span" color="text-blue-800">
+              점 편집 중
+            </Text>
+            <button
+              type="button"
+              onClick={endWarpEditing}
+              className="rounded border border-blue-800 px-2 py-0.5 text-blue-800"
+            >
+              <Text variant="caption12" as="span" color="text-blue-800">
+                나가기 (Esc)
+              </Text>
+            </button>
+          </div>
+          <Text variant="caption12" color="text-fg-secondary">
+            어디서든 끌어 점을 감싸 고르고, Shift로 더하거나 뺍니다. 메쉬는 격자의 가로줄·세로줄을
+            누르면 그 줄의 네 점이 통째로 골라집니다. 이 동안에는 레이어가 움직이지 않습니다.
+          </Text>
+        </div>
+      )}
+
+      {layer && !editing && (
+        <div className="border-b border-border px-4 py-3">
+          <button
+            type="button"
+            onClick={() => beginWarpEditing(layer.id)}
+            className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
+          >
+            <Text variant="ui13" as="span" color="text-fg-secondary">
+              점 편집 (레이어 더블클릭)
+            </Text>
+          </button>
+        </div>
       )}
 
       {layer && (
