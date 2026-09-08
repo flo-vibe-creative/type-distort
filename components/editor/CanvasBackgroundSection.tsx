@@ -17,12 +17,38 @@ const FIT_LABEL: Record<CanvasImageFit, string> = {
 }
 
 const FIT_HINT: Record<CanvasImageFit, string> = {
-  cover: '캔버스를 꽉 채우고 넘치는 부분은 잘립니다.',
+  cover: '대지를 꽉 채우고 넘치는 부분은 잘립니다.',
   contain: '이미지 전체가 보이도록 넣고 남는 곳은 배경색이 비칩니다.',
-  stretch: '비율을 무시하고 캔버스에 정확히 맞춥니다.',
+  stretch: '비율을 무시하고 대지에 정확히 맞춥니다.',
 }
 
-/** 캔버스 배경 — 색과 이미지를 정한다 (레이어를 고르지 않았을 때 보인다) */
+/** 항목 이름과 조작을 한 줄로 놓는다 */
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Text variant="ui13" as="span" color="text-fg-secondary">
+        {label}
+      </Text>
+      <span className="flex items-center gap-1">{children}</span>
+    </div>
+  )
+}
+
+function SmallButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-border px-2 py-1 hover:bg-surface-minimal"
+    >
+      <Text variant="caption12" as="span" color="text-fg-secondary">
+        {children}
+      </Text>
+    </button>
+  )
+}
+
+/** 대지 배경 — 색과 이미지를 한 자리에서 정한다 (레이어를 고르지 않았을 때 보인다) */
 export function CanvasBackgroundSection() {
   const canvas = useEditorStore((state) => state.document.canvas)
   const setCanvasBackground = useEditorStore((state) => state.setCanvasBackground)
@@ -50,113 +76,84 @@ export function CanvasBackgroundSection() {
   }
 
   return (
-    <>
-      <PanelSection title="배경색">
-        <ColorField label="색" value={canvas.background} onChange={setCanvasBackground} />
-        <label className="flex items-center justify-between">
-          <Text variant="ui13" as="span" color="text-fg-secondary">
-            투명하게
-          </Text>
-          <input
-            type="checkbox"
-            checked={canvas.backgroundHidden}
-            onChange={(event) => setBackgroundHidden(event.target.checked)}
-            className="h-4 w-4 accent-blue-800"
-          />
-        </label>
-        <Text variant="caption12" color="text-fg-tertiary">
-          켜면 배경색과 배경 이미지가 모두 감춰져 투명해집니다. 골라 둔 값은 그대로 남아 있어
-          체크를 풀면 곧바로 돌아옵니다.
-        </Text>
-      </PanelSection>
+    <PanelSection title="배경 채우기">
+      <ColorField label="색" value={canvas.background} onChange={setCanvasBackground} />
 
-      <PanelSection title="배경 이미지">
+      <Row label="이미지">
         {canvas.image ? (
           <>
-            <div className="overflow-hidden rounded border border-border">
-              {/* 배경으로 깔린 그림을 그대로 미리 보여준다 */}
-              {previewUrl && (
-                <div
-                  className="h-20 w-full"
-                  style={{
-                    backgroundImage: `url(${previewUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="flex gap-1">
-              {(['cover', 'contain', 'stretch'] as const).map((fit) => (
-                <button
-                  key={fit}
-                  type="button"
-                  onClick={() => setCanvasImageFit(fit)}
-                  className={`flex-1 rounded border py-1 ${
-                    canvas.imageFit === fit
-                      ? 'border-blue-800 bg-blue-50'
-                      : 'border-border hover:bg-surface-minimal'
-                  }`}
-                >
-                  <Text
-                    variant="caption12"
-                    as="span"
-                    color={canvas.imageFit === fit ? 'text-blue-800' : 'text-fg-secondary'}
-                  >
-                    {FIT_LABEL[fit]}
-                  </Text>
-                </button>
-              ))}
-            </div>
-            <Text variant="caption12" color="text-fg-tertiary">
-              {FIT_HINT[canvas.imageFit]}
-            </Text>
-
-            <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                className="flex-1 rounded-md border border-border py-1.5 hover:bg-surface-minimal"
-              >
-                <Text variant="caption12" as="span" color="text-fg-secondary">
-                  다른 이미지
-                </Text>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCanvasImage(null)}
-                className="flex-1 rounded-md border border-border py-1.5 hover:bg-surface-minimal"
-              >
-                <Text variant="caption12" as="span" color="text-fg-secondary">
-                  이미지 빼기
-                </Text>
-              </button>
-            </div>
+            <SmallButton onClick={() => inputRef.current?.click()}>바꾸기</SmallButton>
+            <SmallButton onClick={() => setCanvasImage(null)}>빼기</SmallButton>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="rounded-md border border-border py-1.5 hover:bg-surface-minimal"
-          >
-            <Text variant="ui13" as="span" color="text-fg-secondary">
-              이미지 고르기
-            </Text>
-          </button>
+          <SmallButton onClick={() => inputRef.current?.click()}>고르기</SmallButton>
         )}
+      </Row>
 
+      {canvas.image && (
+        <>
+          {previewUrl && (
+            <div
+              className="h-16 w-full rounded border border-border"
+              style={{
+                backgroundImage: `url(${previewUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+          )}
+
+          <div className="flex gap-1">
+            {(['cover', 'contain', 'stretch'] as const).map((fit) => (
+              <button
+                key={fit}
+                type="button"
+                onClick={() => setCanvasImageFit(fit)}
+                className={`flex-1 rounded border py-1 ${
+                  canvas.imageFit === fit
+                    ? 'border-blue-800 bg-blue-50'
+                    : 'border-border hover:bg-surface-minimal'
+                }`}
+              >
+                <Text
+                  variant="caption12"
+                  as="span"
+                  color={canvas.imageFit === fit ? 'text-blue-800' : 'text-fg-secondary'}
+                >
+                  {FIT_LABEL[fit]}
+                </Text>
+              </button>
+            ))}
+          </div>
+          <Text variant="caption12" color="text-fg-tertiary">
+            {FIT_HINT[canvas.imageFit]}
+          </Text>
+        </>
+      )}
+
+      <Row label="투명하게">
         <input
-          ref={inputRef}
-          type="file"
-          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-          hidden
-          onChange={(event) => {
-            void pickImage(event.target.files?.[0])
-            event.target.value = ''
-          }}
+          type="checkbox"
+          checked={canvas.backgroundHidden}
+          onChange={(event) => setBackgroundHidden(event.target.checked)}
+          className="h-4 w-4 accent-blue-800"
         />
-      </PanelSection>
-    </>
+      </Row>
+      <Text variant="caption12" color="text-fg-tertiary">
+        켜면 배경색과 배경 이미지가 모두 감춰져 투명해집니다. 골라 둔 값은 그대로 남아 있어
+        체크를 풀면 곧바로 돌아옵니다.
+      </Text>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+        hidden
+        onChange={(event) => {
+          void pickImage(event.target.files?.[0])
+          event.target.value = ''
+        }}
+      />
+    </PanelSection>
   )
 }
