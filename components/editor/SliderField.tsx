@@ -4,6 +4,18 @@ import { Text } from '@/components/ui/Text'
 import { useNumericDraft } from '@/hooks/useNumericDraft'
 import { useEditorStore } from '@/store/editorStore'
 
+/** 슬라이더 값을 실제로 바꾸는 키들 — 이때만 조작 한 번으로 묶는다 */
+const VALUE_KEYS = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+])
+
 interface SliderFieldProps {
   label: string
   value: number
@@ -69,8 +81,15 @@ export function SliderField({
         value={value}
         onPointerDown={() => useEditorStore.getState().beginGesture()}
         onPointerUp={() => useEditorStore.getState().endGesture()}
-        onKeyDown={() => useEditorStore.getState().beginGesture()}
-        onKeyUp={() => useEditorStore.getState().endGesture()}
+        onKeyDown={(event) => {
+          // Cmd+Z 같은 단축키까지 조작으로 잡으면 기록이 멈춘 채 남는다
+          if (event.metaKey || event.ctrlKey || event.altKey) return
+          if (VALUE_KEYS.has(event.key)) useEditorStore.getState().beginGesture()
+        }}
+        onKeyUp={(event) => {
+          if (VALUE_KEYS.has(event.key)) useEditorStore.getState().endGesture()
+        }}
+        onBlur={() => useEditorStore.getState().endGesture()}
         onChange={(event) => onChange(Number.parseFloat(event.target.value))}
         className="h-1 w-full cursor-pointer appearance-none rounded bg-surface-quaternary accent-blue-800"
       />

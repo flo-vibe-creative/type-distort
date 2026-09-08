@@ -405,25 +405,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   endGesture: () => set({ historyPaused: false }),
 
+  // 되돌리기를 눌렀다는 것은 끌던 조작이 끝났다는 뜻이므로, 멈춰 있던 기록을 함께 푼다.
+  // 조작 시작만 알려지고 끝이 오지 않은 경우에도 기록이 영영 멈춰 있지 않게 하는 안전장치다.
   undo: () =>
     set((state) => {
       const previous = state.past[state.past.length - 1]
-      if (!previous) return {}
+      if (!previous) return { historyPaused: false }
       return {
         document: previous,
         past: state.past.slice(0, -1),
         future: [state.document, ...state.future],
+        historyPaused: false,
       }
     }),
 
   redo: () =>
     set((state) => {
       const next = state.future[0]
-      if (!next) return {}
+      if (!next) return { historyPaused: false }
       return {
         document: next,
         past: [...state.past, state.document],
         future: state.future.slice(1),
+        historyPaused: false,
       }
     }),
 

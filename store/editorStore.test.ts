@@ -534,3 +534,24 @@ describe('레이어 색 덮어쓰기', () => {
     expect(store().document.layers[0].fillOverride).toBeNull()
   })
 })
+
+describe('되돌리기 안전장치', () => {
+  it('조작 시작만 알려지고 끝이 오지 않아도 되돌리기가 기록을 다시 켠다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+
+    // 끌기를 시작했다가 끝을 알리지 못한 상태
+    store().beginGesture()
+    store().updateTransform(a.id, { x: 50 })
+    expect(store().historyPaused).toBe(true)
+
+    store().undo()
+    expect(store().historyPaused).toBe(false)
+
+    // 이후 변경이 다시 기록되어 되돌릴 수 있다
+    const x = store().document.layers[0].transform.x
+    store().updateTransform(a.id, { x: x + 10 })
+    store().undo()
+    expect(store().document.layers[0].transform.x).toBe(x)
+  })
+})
