@@ -88,7 +88,7 @@ export function CanvasSizeSection() {
               key={preset.id}
               type="button"
               onClick={() => setCanvasSize(size.width, size.height)}
-              className={`rounded border px-2 py-1.5 text-left ${
+              className={`flex items-baseline justify-between gap-1 whitespace-nowrap rounded border px-2 py-1 ${
                 selected ? 'border-blue-800 bg-blue-50' : 'border-border hover:bg-surface-minimal'
               }`}
             >
@@ -99,11 +99,9 @@ export function CanvasSizeSection() {
               >
                 {describeAspectRatio(size.width, size.height)}
               </Text>
-              <span className="block">
-                <Text variant="caption10" as="span" color="text-fg-tertiary">
-                  {size.width} × {size.height}
-                </Text>
-              </span>
+              <Text variant="caption12" as="span" color="text-fg-tertiary">
+                {size.width} × {size.height}
+              </Text>
             </button>
           )
         })}
