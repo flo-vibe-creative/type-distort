@@ -220,7 +220,6 @@ export function CanvasStage() {
     [selectedLayers]
   )
 
-  const hasLayers = document.layers.length > 0
   const cursor = panning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
 
   return (
@@ -353,14 +352,6 @@ export function CanvasStage() {
           )}
         </svg>
       </div>
-
-      {!hasLayers && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <Text variant="ui13" align="center" color="text-fg-tertiary">
-            SVG 또는 이미지 파일을 여기에 끌어다 놓으세요
-          </Text>
-        </div>
-      )}
 
       <div
         className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5"
