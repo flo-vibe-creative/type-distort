@@ -37,7 +37,7 @@ export function LayerPanel() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <Text variant="ui14" as="h2">
+        <Text variant="caption12" as="h2" color="text-fg-tertiary">
           레이어
         </Text>
         <Text variant="caption12" as="span" color="text-fg-tertiary">

@@ -45,8 +45,8 @@ export function Toolbar() {
         />
       </div>
 
-      <Text variant="ui16" as="h1">
-        Type Distort
+      <Text variant="ui13Strong" as="h1">
+        Type Distortion Tool
       </Text>
 
       <div className="flex items-center gap-2">
