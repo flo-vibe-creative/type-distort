@@ -72,7 +72,9 @@
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
 | `components/editor/ColorField.tsx` | 색 견본·코드 입력 |
 | `components/editor/PanelSection.tsx` | 설정 패널 묶음 |
-| `components/editor/CanvasBackgroundSection.tsx` | 캔버스 배경 설정 |
+| `components/editor/CanvasBackgroundSection.tsx` | 대지 배경 설정 |
+| `components/editor/CanvasSizeSection.tsx` | 대지 크기·비율 |
+| `lib/format/ratio.ts` | 가로세로 비율 표기 |
 | `lib/format/color.ts` | 색 표기 정리 |
 | `hooks/useObjectUrl.ts` | 파일을 화면에서 참조할 임시 주소로 |
 | `hooks/useNumericDraft.ts` | 숫자 입력 공통 동작 |
@@ -189,6 +191,7 @@
 - [x] 메쉬 격자의 가로줄·세로줄을 눌러 그 줄의 네 점 통째로 선택
 - [x] 캔버스 배경 — 배경색과 배경 이미지(채우기·맞추기·늘이기)
 - [x] 레이어별 글자 색 덮어쓰기
+- [x] 대지 크기 조절 — 픽셀값과 비율 함께 표기
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

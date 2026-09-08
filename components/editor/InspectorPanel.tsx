@@ -1,6 +1,7 @@
 'use client'
 
 import { CanvasBackgroundSection } from '@/components/editor/CanvasBackgroundSection'
+import { CanvasSizeSection } from '@/components/editor/CanvasSizeSection'
 import { ColorField } from '@/components/editor/ColorField'
 import { NumberField } from '@/components/editor/NumberField'
 import { PanelSection } from '@/components/editor/PanelSection'
@@ -51,9 +52,10 @@ export function InspectorPanel() {
         <>
           <div className="border-b border-border px-4 py-3">
             <Text variant="caption12" color="text-fg-tertiary">
-              레이어를 클릭하면 그 레이어 설정이 나옵니다. 아래는 캔버스 전체에 걸리는 배경입니다.
+              레이어를 클릭하면 그 레이어 설정이 나옵니다. 아래는 대지 전체에 걸리는 설정입니다.
             </Text>
           </div>
+          <CanvasSizeSection />
           <CanvasBackgroundSection />
         </>
       )}
@@ -155,33 +157,6 @@ export function InspectorPanel() {
             )}
           </PanelSection>
 
-          <PanelSection title="글자">
-            {layer.source.kind === 'vector' ? (
-              <>
-                <SliderField
-                  label="자간"
-                  min={-0.3}
-                  max={1.5}
-                  step={0.01}
-                  suffix="%"
-                  displayScale={100}
-                  value={layer.letterSpacing}
-                  onChange={(value) => setLetterSpacing(layer.id, value)}
-                />
-                <Text variant="caption12" color="text-fg-tertiary">
-                  {glyphCountOf(layer.source.shapes)}개의 글자로 나뉘었습니다. 숫자가 실제와
-                  다르면 글자끼리 겹쳐 있는 것이니, 디자인 툴에서 자간을 조금 벌려 다시 내보내
-                  주세요.
-                </Text>
-              </>
-            ) : (
-              <Text variant="caption12" color="text-fg-tertiary">
-                이미지 레이어는 글자 단위를 알 수 없어 자간을 조절할 수 없습니다. SVG로 가져오면
-                조절할 수 있습니다.
-              </Text>
-            )}
-          </PanelSection>
-
           <PanelSection title="왜곡">
             <select
               value={layer.warp.type}
@@ -212,17 +187,46 @@ export function InspectorPanel() {
             <Text variant="caption12" color="text-fg-tertiary">
               {WARP_GUIDE[layer.warp.type]}
             </Text>
+          </PanelSection>
 
+          <PanelSection title="글자">
+            {layer.source.kind === 'vector' ? (
+              <>
+                <SliderField
+                  label="자간"
+                  min={-0.3}
+                  max={1.5}
+                  step={0.01}
+                  suffix="%"
+                  displayScale={100}
+                  value={layer.letterSpacing}
+                  onChange={(value) => setLetterSpacing(layer.id, value)}
+                />
+                <Text variant="caption12" color="text-fg-tertiary">
+                  {glyphCountOf(layer.source.shapes)}개의 글자로 나뉘었습니다. 숫자가 실제와
+                  다르면 글자끼리 겹쳐 있는 것이니, 디자인 툴에서 자간을 조금 벌려 다시 내보내
+                  주세요.
+                </Text>
+              </>
+            ) : (
+              <Text variant="caption12" color="text-fg-tertiary">
+                이미지 레이어는 글자 단위를 알 수 없어 자간을 조절할 수 없습니다. SVG로 가져오면
+                조절할 수 있습니다.
+              </Text>
+            )}
+          </PanelSection>
+
+          <div className="px-4 py-3">
             <button
               type="button"
               onClick={() => setWarpType(layer.id, layer.warp.type)}
-              className="mt-1 rounded-md border border-border py-1.5 hover:bg-surface-minimal"
+              className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
             >
               <Text variant="caption12" as="span" color="text-fg-secondary">
                 왜곡 초기화
               </Text>
             </button>
-          </PanelSection>
+          </div>
         </>
       )}
     </aside>
