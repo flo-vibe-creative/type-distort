@@ -1,3 +1,4 @@
+import type { ArcParams } from '@/lib/warp/arc'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp, type WarpState } from '@/lib/warp/registry'
 import type { Point, WarpContext, WarpType } from '@/lib/warp/types'
@@ -82,9 +83,7 @@ export function dragWarpHandle(
   switch (warp.type) {
     case 'arc': {
       if (handleId === 'arc-baseline') {
-        // 기준선 가운데 지점은 언제나 (너비/2, 높이×기준선)에 있으므로 높이를 그대로 읽으면 된다
-        const baseline = localPoint.y / size.height
-        return { baseline: Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, baseline)) }
+        return dragArcBaseline(warp.params, size, localPoint)
       }
       const u = handleId === 'arc-start' ? 0 : handleId === 'arc-end' ? 1 : null
       if (u === null) return null
@@ -238,4 +237,58 @@ function moveTogether(
   }
 
   return { [key]: points }
+}
+
+/** 이보다 작은 각도에서는 반지름이 발산해 원 위를 도는 것이 의미가 없다 */
+const MIN_ROTATABLE_ANGLE = 1
+
+/** 두 각도가 얼마나 떨어져 있는지 (한 바퀴를 넘어가는 것을 감안한다) */
+function angularDistance(a: number, b: number): number {
+  const diff = Math.abs(a - b) % 360
+  return diff > 180 ? 360 - diff : diff
+}
+
+function wrapDegrees(value: number): number {
+  const wrapped = ((value + 180) % 360 + 360) % 360 - 180
+  return wrapped
+}
+
+/**
+ * 기준점을 끌었을 때의 기준선과 회전을 함께 구한다.
+ *
+ * 기준점은 반지름 R인 원 위를 도는데, 그 원의 중심 높이는 기준선이 정한다.
+ * 가로로 얼마나 갔는지에서 회전을, 세로 위치에서 기준선을 읽으면 두 값이 한 번에 나온다.
+ * 가로에서 나오는 각도는 두 가지 답이 있으므로 지금 값에 가까운 쪽을 고른다.
+ */
+function dragArcBaseline(
+  params: ArcParams,
+  size: WarpContext,
+  localPoint: Point
+): Record<string, unknown> {
+  const clampBaseline = (value: number) =>
+    Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, value))
+
+  // 각도가 거의 없으면 원이 사실상 직선이라 위아래로만 움직인다
+  if (Math.abs(params.angle) < MIN_ROTATABLE_ANGLE) {
+    return { baseline: clampBaseline(localPoint.y / size.height) }
+  }
+
+  const sweep = (params.angle * Math.PI) / 180
+  const radius = size.width / sweep
+  const sine = Math.max(-1, Math.min(1, (localPoint.x - size.width / 2) / radius))
+  const primary = (Math.asin(sine) * 180) / Math.PI
+
+  // 같은 가로 위치를 만드는 각도는 둘이다. 끌던 흐름이 끊기지 않게 가까운 쪽을 고른다.
+  const candidates = [primary, wrapDegrees(180 - primary)]
+  const rotation = candidates.reduce((best, candidate) =>
+    angularDistance(candidate, params.rotation) < angularDistance(best, params.rotation)
+      ? candidate
+      : best
+  )
+
+  const rise = radius * (1 - Math.cos((rotation * Math.PI) / 180))
+  return {
+    rotation: Math.round(rotation * 100) / 100,
+    baseline: clampBaseline((localPoint.y - rise) / size.height),
+  }
 }

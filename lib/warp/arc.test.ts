@@ -106,3 +106,45 @@ describe('warpArc — 기준선', () => {
     }
   })
 })
+
+describe('warpArc — 회전', () => {
+  it('기본 회전은 0이다', () => {
+    expect(ARC_DEFAULT.rotation).toBe(0)
+  })
+
+  it('각도가 0이면 회전을 줘도 원본 그대로다', () => {
+    const p = warpArc(0.3, 0.7, { ...ARC_DEFAULT, angle: 0, rotation: 90 }, ctx)
+    expect(p.x).toBeCloseTo(0.3 * ctx.width, 6)
+    expect(p.y).toBeCloseTo(0.7 * ctx.height, 6)
+  })
+
+  it('회전을 주면 글자가 원 위에서 옆으로 옮겨간다', () => {
+    const params = { ...ARC_DEFAULT, angle: 120 }
+    const before = warpArc(0.5, 0.5, params, ctx)
+    const after = warpArc(0.5, 0.5, { ...params, rotation: 40 }, ctx)
+    expect(after.x).toBeGreaterThan(before.x)
+  })
+
+  it('회전해도 원의 중심에서 떨어진 거리는 그대로다', () => {
+    const params = { ...ARC_DEFAULT, angle: 120 }
+    const radius = ctx.width / ((120 * Math.PI) / 180)
+    const center = { x: ctx.width / 2, y: ctx.height * 0.5 + radius }
+    const distance = (rotation: number) => {
+      const p = warpArc(0.5, 0.5, { ...params, rotation }, ctx)
+      return Math.hypot(p.x - center.x, p.y - center.y)
+    }
+    expect(distance(0)).toBeCloseTo(radius, 6)
+    expect(distance(70)).toBeCloseTo(radius, 6)
+    expect(distance(-140)).toBeCloseTo(radius, 6)
+  })
+
+  it('회전은 글자를 늘이거나 줄이지 않는다', () => {
+    const params = { ...ARC_DEFAULT, angle: 120 }
+    const span = (rotation: number) => {
+      const a = warpArc(0, 0.5, { ...params, rotation }, ctx)
+      const b = warpArc(1, 0.5, { ...params, rotation }, ctx)
+      return Math.hypot(b.x - a.x, b.y - a.y)
+    }
+    expect(span(55)).toBeCloseTo(span(0), 6)
+  })
+})

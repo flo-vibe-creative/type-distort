@@ -35,9 +35,57 @@ describe('아크 핸들', () => {
     handles.forEach((handle) => expect(handle.local.y).toBeCloseTo(size.height, 6))
   })
 
-  it('기준선 핸들을 끌면 그 높이가 기준선이 된다', () => {
+  it('각도가 없을 때는 기준점이 위아래로만 움직인다', () => {
     const patch = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 100, y: 80 })
     expect(patch).toEqual({ baseline: 0.8 })
+  })
+
+  it('휘어 있을 때 기준점을 끌면 기준선과 회전이 함께 정해진다', () => {
+    const warp = createWarp('arc')
+    if (warp.type !== 'arc') throw new Error('arc')
+    warp.params.angle = 120
+
+    // 회전 40도, 기준선 0.5 인 자리에 놓았을 때의 기준점 위치를 목표로 삼는다
+    const target = applyWarp(
+      { type: 'arc', params: { ...warp.params, rotation: 40 } },
+      0.5,
+      0.5,
+      size
+    )
+    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
+    expect(patch!.rotation as number).toBeCloseTo(40, 1)
+    expect(patch!.baseline as number).toBeCloseTo(0.5, 3)
+  })
+
+  it('끈 자리로 기준점이 정확히 따라온다', () => {
+    const warp = createWarp('arc')
+    if (warp.type !== 'arc') throw new Error('arc')
+    warp.params.angle = 150
+
+    const target = { x: size.width * 0.7, y: size.height * 0.4 }
+    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
+    const params = { ...warp.params, ...(patch as object) }
+    // 기준점은 기준선 높이에 놓이므로 그 자리에서 확인한다
+    const moved = applyWarp({ type: 'arc', params }, 0.5, params.baseline, size)
+    expect(moved.x).toBeCloseTo(target.x, 1)
+    expect(moved.y).toBeCloseTo(target.y, 1)
+  })
+
+  it('반대편으로 넘어갈 때 지금 회전에 가까운 쪽을 고른다', () => {
+    const warp = createWarp('arc')
+    if (warp.type !== 'arc') throw new Error('arc')
+    warp.params.angle = 150
+    warp.params.rotation = 150
+
+    // 같은 가로 위치를 만드는 각도가 둘일 때, 멀리 튀지 않아야 한다
+    const target = applyWarp(
+      { type: 'arc', params: { ...warp.params, rotation: 160 } },
+      0.5,
+      0.5,
+      size
+    )
+    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
+    expect(Math.abs((patch!.rotation as number) - 150)).toBeLessThan(45)
   })
 
   it('기준선은 글자에서 너무 멀리 벗어나지 않는다', () => {

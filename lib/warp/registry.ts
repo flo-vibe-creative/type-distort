@@ -50,6 +50,7 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
         unit: '%',
         displayScale: 100,
       },
+      { key: 'rotation', label: '회전', min: -180, max: 180, step: 1, unit: '°' },
       { key: 'strength', label: '세기', min: 0, max: 1, step: 0.01 },
     ],
   },
