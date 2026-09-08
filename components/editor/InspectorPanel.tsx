@@ -1,6 +1,9 @@
 'use client'
 
+import { CanvasBackgroundSection } from '@/components/editor/CanvasBackgroundSection'
+import { ColorField } from '@/components/editor/ColorField'
 import { NumberField } from '@/components/editor/NumberField'
+import { PanelSection } from '@/components/editor/PanelSection'
 import { SliderField } from '@/components/editor/SliderField'
 import { Text } from '@/components/ui/Text'
 import { glyphCountOf } from '@/lib/render/letterSpacing'
@@ -14,19 +17,6 @@ const WARP_GUIDE: Record<WarpType, string> = {
   mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. 여러 개를 한꺼번에 다루려면 레이어를 더블클릭해 점 편집으로 들어가세요. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
   perspective: '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
   bulge: '가운데 점을 끌어 중심을 옮기고, 오른쪽 점을 끌어 영향 범위를 정합니다. 세기를 음수로 하면 오목해집니다.',
-}
-
-function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="border-b border-border px-4 py-3">
-      <div className="mb-2">
-        <Text variant="caption12" as="h3" color="text-fg-tertiary">
-          {title}
-        </Text>
-      </div>
-      <div className="flex flex-col gap-2">{children}</div>
-    </section>
-  )
 }
 
 function EmptyMessage({ children }: { children: React.ReactNode }) {
@@ -46,6 +36,7 @@ export function InspectorPanel() {
   const setWarpType = useEditorStore((state) => state.setWarpType)
   const updateWarpParams = useEditorStore((state) => state.updateWarpParams)
   const setLetterSpacing = useEditorStore((state) => state.setLetterSpacing)
+  const setLayerFill = useEditorStore((state) => state.setLayerFill)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
   const endWarpEditing = useEditorStore((state) => state.endWarpEditing)
@@ -57,11 +48,14 @@ export function InspectorPanel() {
   return (
     <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-border">
       {selected.length === 0 && (
-        <EmptyMessage>
-          레이어를 클릭하면 설정이 표시됩니다
-          <br />
-          빈 곳에서 끌면 여러 개를 고를 수 있습니다
-        </EmptyMessage>
+        <>
+          <div className="border-b border-border px-4 py-3">
+            <Text variant="caption12" color="text-fg-tertiary">
+              레이어를 클릭하면 그 레이어 설정이 나옵니다. 아래는 캔버스 전체에 걸리는 배경입니다.
+            </Text>
+          </div>
+          <CanvasBackgroundSection />
+        </>
       )}
 
       {selected.length > 1 && (
@@ -156,6 +150,39 @@ export function InspectorPanel() {
                 크기·회전 초기화
               </Text>
             </button>
+          </PanelSection>
+
+          <PanelSection title="색">
+            {layer.source.kind === 'vector' ? (
+              <>
+                <ColorField
+                  label="글자 색"
+                  value={layer.fillOverride}
+                  fallback={layer.source.shapes[0]?.fill ?? '#000000'}
+                  onChange={(color) => setLayerFill(layer.id, color)}
+                />
+                {layer.fillOverride !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setLayerFill(layer.id, null)}
+                    className="rounded-md border border-border py-1.5 hover:bg-surface-minimal"
+                  >
+                    <Text variant="caption12" as="span" color="text-fg-secondary">
+                      원래 색으로 되돌리기
+                    </Text>
+                  </button>
+                )}
+                <Text variant="caption12" color="text-fg-tertiary">
+                  {layer.fillOverride === null
+                    ? '지금은 가져온 SVG의 색을 그대로 쓰고 있습니다. 색을 고르면 글자 전체가 그 색으로 칠해집니다.'
+                    : '가져온 SVG에 여러 색이 있었다면 모두 이 색으로 덮입니다.'}
+                </Text>
+              </>
+            ) : (
+              <Text variant="caption12" color="text-fg-tertiary">
+                이미지 레이어는 색을 바꿀 수 없습니다. SVG로 가져오면 색을 고를 수 있습니다.
+              </Text>
+            )}
           </PanelSection>
 
           <PanelSection title="글자">

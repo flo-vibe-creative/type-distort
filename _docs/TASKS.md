@@ -70,6 +70,11 @@
 | `hooks/useLayerInteraction.ts` | 이동·크기·회전 드래그 |
 | `hooks/useEditorKeyboard.ts` | 단축키 |
 | `components/editor/NumberField.tsx` | 숫자 입력 칸 |
+| `components/editor/ColorField.tsx` | 색 견본·코드 입력 |
+| `components/editor/PanelSection.tsx` | 설정 패널 묶음 |
+| `components/editor/CanvasBackgroundSection.tsx` | 캔버스 배경 설정 |
+| `lib/format/color.ts` | 색 표기 정리 |
+| `hooks/useObjectUrl.ts` | 파일을 화면에서 참조할 임시 주소로 |
 | `hooks/useNumericDraft.ts` | 숫자 입력 공통 동작 |
 | `lib/format/number.ts` | 숫자 표시·해석 |
 | `components/editor/SelectionFrame.tsx` | 선택 상자와 크기·회전 핸들 |
@@ -182,6 +187,8 @@
 - [x] 배치/왜곡 탭을 없애고 한 패널로 통합 — 클릭 즉시 이동, 빈 곳 드래그로 레이어 여러 개 선택
 - [x] 점 편집 상태 추가 — 더블클릭으로 들어가 어디서든 드래그로 조작점을 감싸 고르기
 - [x] 메쉬 격자의 가로줄·세로줄을 눌러 그 줄의 네 점 통째로 선택
+- [x] 캔버스 배경 — 배경색과 배경 이미지(채우기·맞추기·늘이기)
+- [x] 레이어별 글자 색 덮어쓰기
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

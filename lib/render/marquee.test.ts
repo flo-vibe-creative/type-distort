@@ -12,6 +12,7 @@ function layer(id: string, x: number, y: number, visible = true): Layer {
     transform: { x, y, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
     letterSpacing: 0,
+    fillOverride: null,
   }
 }
 

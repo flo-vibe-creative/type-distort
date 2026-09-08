@@ -1,11 +1,24 @@
 import { create } from 'zustand'
-import type { CanvasSettings, EditorDocument, Layer, LayerTransform } from '@/lib/document/types'
+import type {
+  CanvasImage,
+  CanvasImageFit,
+  CanvasSettings,
+  EditorDocument,
+  Layer,
+  LayerTransform,
+} from '@/lib/document/types'
 import { sourceSize } from '@/lib/document/types'
 import { contentBounds } from '@/lib/render/canvasBounds'
 import { createWarp, type WarpState } from '@/lib/warp/registry'
 import type { WarpType } from '@/lib/warp/types'
 
-export const DEFAULT_CANVAS: CanvasSettings = { width: 1200, height: 800, background: '#ffffff' }
+export const DEFAULT_CANVAS: CanvasSettings = {
+  width: 1200,
+  height: 800,
+  background: '#ffffff',
+  image: null,
+  imageFit: 'cover',
+}
 
 /** 새 레이어가 앞의 것과 정확히 겹쳐 보이지 않도록 어긋나게 두는 간격 */
 const CASCADE_STEP = 24
@@ -70,6 +83,9 @@ interface EditorState {
   setLetterSpacing: (id: string, spacing: number) => void
   setCanvasSize: (width: number, height: number) => void
   setCanvasBackground: (background: string | null) => void
+  setCanvasImage: (image: CanvasImage | null) => void
+  setCanvasImageFit: (fit: CanvasImageFit) => void
+  setLayerFill: (id: string, fill: string | null) => void
   /** 보이는 레이어 전체에 맞춰 캔버스를 자른다 */
   fitCanvasToContent: (padding?: number) => void
   setZoom: (zoom: number) => void
@@ -302,6 +318,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         canvas: { ...state.document.canvas, background },
       })
     ),
+
+  setCanvasImage: (image) =>
+    set((state) =>
+      withHistory(state, { ...state.document, canvas: { ...state.document.canvas, image } })
+    ),
+
+  setCanvasImageFit: (imageFit) =>
+    set((state) =>
+      withHistory(state, { ...state.document, canvas: { ...state.document.canvas, imageFit } })
+    ),
+
+  setLayerFill: (id, fill) =>
+    set((state) => mapLayer(state, id, (layer) => ({ ...layer, fillOverride: fill }))),
 
   fitCanvasToContent: (padding = 0) =>
     set((state) => {

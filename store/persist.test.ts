@@ -24,6 +24,7 @@ function vectorLayer(): Layer {
     transform: { x: 5, y: 6, scaleX: 1.5, scaleY: 2, rotation: 30 },
     warp: createWarp('bulge'),
     letterSpacing: 0.25,
+    fillOverride: '#ff00ff',
   }
 }
 
@@ -43,11 +44,12 @@ function rasterLayer(): Layer {
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('mesh'),
     letterSpacing: 0,
+    fillOverride: null,
   }
 }
 
 const document: EditorDocument = {
-  canvas: { width: 800, height: 600, background: '#fafafa' },
+  canvas: { width: 800, height: 600, background: '#fafafa', image: null, imageFit: 'cover' },
   layers: [vectorLayer(), rasterLayer()],
 }
 

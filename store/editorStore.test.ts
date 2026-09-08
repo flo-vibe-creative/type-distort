@@ -19,6 +19,7 @@ function fakeLayer(name: string, width = 100, height = 50): Layer {
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp('arc'),
     letterSpacing: 0,
+    fillOverride: null,
   }
 }
 
@@ -337,7 +338,10 @@ describe('되돌리기 / 다시하기', () => {
 
   it('저장본을 되살리면 되돌리기 기록은 비워진다', () => {
     store().addLayers([fakeLayer('A')])
-    store().replaceDocument({ canvas: { width: 10, height: 10, background: null }, layers: [] })
+    store().replaceDocument({
+      canvas: { width: 10, height: 10, background: null, image: null, imageFit: 'cover' },
+      layers: [],
+    })
     expect(store().canUndo()).toBe(false)
     expect(store().document.canvas.width).toBe(10)
   })
@@ -449,5 +453,60 @@ describe('점 편집 상태', () => {
     store().beginWarpEditing(a.id)
     store().removeLayers([a.id])
     expect(store().editingWarpLayerId).toBeNull()
+  })
+})
+
+describe('캔버스 배경', () => {
+  it('배경색을 바꾸고 투명으로도 둘 수 있다', () => {
+    store().setCanvasBackground('#ff0000')
+    expect(store().document.canvas.background).toBe('#ff0000')
+    store().setCanvasBackground(null)
+    expect(store().document.canvas.background).toBeNull()
+  })
+
+  it('배경 이미지를 넣고 뺄 수 있다', () => {
+    const image = {
+      bitmap: null as unknown as ImageBitmap,
+      blob: new Blob(),
+      width: 100,
+      height: 50,
+    }
+    store().setCanvasImage(image)
+    expect(store().document.canvas.image).toBe(image)
+    store().setCanvasImage(null)
+    expect(store().document.canvas.image).toBeNull()
+  })
+
+  it('맞춤 방식을 바꾼다', () => {
+    expect(store().document.canvas.imageFit).toBe('cover')
+    store().setCanvasImageFit('contain')
+    expect(store().document.canvas.imageFit).toBe('contain')
+  })
+
+  it('배경 변경도 되돌릴 수 있다', () => {
+    const before = store().document.canvas.background
+    store().setCanvasBackground('#123456')
+    store().undo()
+    expect(store().document.canvas.background).toBe(before)
+  })
+})
+
+describe('레이어 색 덮어쓰기', () => {
+  it('색을 지정하고 원래대로 되돌린다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    expect(store().document.layers[0].fillOverride).toBeNull()
+    store().setLayerFill(a.id, '#3f3fff')
+    expect(store().document.layers[0].fillOverride).toBe('#3f3fff')
+    store().setLayerFill(a.id, null)
+    expect(store().document.layers[0].fillOverride).toBeNull()
+  })
+
+  it('색 변경도 되돌릴 수 있다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().setLayerFill(a.id, '#ff0000')
+    store().undo()
+    expect(store().document.layers[0].fillOverride).toBeNull()
   })
 })

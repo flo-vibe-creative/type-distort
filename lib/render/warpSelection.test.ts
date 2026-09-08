@@ -17,6 +17,7 @@ function layer(type: WarpType, overrides: Partial<Layer> = {}): Layer {
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warp: createWarp(type),
     letterSpacing: 0,
+    fillOverride: null,
     ...overrides,
   }
 }

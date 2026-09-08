@@ -1,4 +1,10 @@
-import type { EditorDocument, Layer, LayerTransform } from '@/lib/document/types'
+import type {
+  CanvasImageFit,
+  CanvasSettings,
+  EditorDocument,
+  Layer,
+  LayerTransform,
+} from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
 import { getImage, keepOnlyImages, putImage } from '@/lib/storage/idb'
 import type { VectorShape } from '@/lib/svg/parse'
@@ -8,6 +14,8 @@ import type { WarpType } from '@/lib/warp/types'
 /** 저장본 형식이 바뀌면 올린다 — 예전 형식은 조용히 버리고 빈 문서로 시작한다 */
 const STORAGE_VERSION = 1
 const STORAGE_KEY = 'type-distort:document'
+/** 배경 이미지는 레이어와 겹치지 않는 이름으로 따로 보관한다 */
+const CANVAS_IMAGE_KEY = 'canvas:background'
 /** 이 시간 동안 더 바뀌지 않으면 저장한다 (조작 중 매번 쓰지 않도록) */
 const SAVE_DELAY_MS = 600
 
@@ -21,14 +29,23 @@ interface StoredLayer {
   visible: boolean
   transform: LayerTransform
   warp: WarpState
-  /** 예전 저장본에는 없을 수 있어 되살릴 때 0으로 채운다 */
+  /** 예전 저장본에는 없을 수 있어 되살릴 때 기본값으로 채운다 */
   letterSpacing?: number
+  fillOverride?: string | null
   source: StoredSource
+}
+
+interface StoredCanvas {
+  width: number
+  height: number
+  background: string | null
+  imageFit?: CanvasImageFit
+  image?: { width: number; height: number; key: string } | null
 }
 
 export interface StoredDocument {
   version: number
-  canvas: EditorDocument['canvas']
+  canvas: StoredCanvas
   layers: StoredLayer[]
 }
 
@@ -39,7 +56,19 @@ export type RestoredImages = Record<string, { bitmap: ImageBitmap; blob: Blob }>
 export function serializeDocument(document: EditorDocument): StoredDocument {
   return {
     version: STORAGE_VERSION,
-    canvas: document.canvas,
+    canvas: {
+      width: document.canvas.width,
+      height: document.canvas.height,
+      background: document.canvas.background,
+      imageFit: document.canvas.imageFit,
+      image: document.canvas.image
+        ? {
+            width: document.canvas.image.width,
+            height: document.canvas.image.height,
+            key: CANVAS_IMAGE_KEY,
+          }
+        : null,
+    },
     layers: document.layers.map((layer) => ({
       id: layer.id,
       name: layer.name,
@@ -47,6 +76,7 @@ export function serializeDocument(document: EditorDocument): StoredDocument {
       transform: layer.transform,
       warp: layer.warp,
       letterSpacing: layer.letterSpacing,
+      fillOverride: layer.fillOverride,
       source:
         layer.source.kind === 'vector'
           ? { kind: 'vector', shapes: layer.source.shapes, bounds: layer.source.bounds }
@@ -88,6 +118,7 @@ function restoreLayer(stored: StoredLayer, images: RestoredImages): Layer | null
     transform: stored.transform,
     warp,
     letterSpacing: Number.isFinite(stored.letterSpacing) ? (stored.letterSpacing as number) : 0,
+    fillOverride: typeof stored.fillOverride === 'string' ? stored.fillOverride : null,
   }
 
   if (stored.source.kind === 'vector') {
@@ -126,7 +157,25 @@ export function deserializeDocument(
     .map((layer) => restoreLayer(layer, images))
     .filter((layer): layer is Layer => layer !== null)
 
-  return { canvas: stored.canvas, layers }
+  const storedImage = stored.canvas.image
+  const restoredImage = storedImage ? images[storedImage.key] : undefined
+  const canvas: CanvasSettings = {
+    width: stored.canvas.width,
+    height: stored.canvas.height,
+    background: stored.canvas.background ?? null,
+    imageFit: stored.canvas.imageFit ?? 'cover',
+    image:
+      storedImage && restoredImage
+        ? {
+            bitmap: restoredImage.bitmap,
+            blob: restoredImage.blob,
+            width: storedImage.width,
+            height: storedImage.height,
+          }
+        : null,
+  }
+
+  return { canvas, layers }
 }
 
 let saveTimer: number | null = null
@@ -151,6 +200,10 @@ async function saveDocument(document: EditorDocument): Promise<void> {
       imageKeys.push(layer.id)
       await putImage(layer.id, layer.source.blob)
     }
+    if (document.canvas.image) {
+      imageKeys.push(CANVAS_IMAGE_KEY)
+      await putImage(CANVAS_IMAGE_KEY, document.canvas.image.blob)
+    }
     await keepOnlyImages(imageKeys)
   } catch {
     // 저장 공간이 막혀 있어도 작업은 이어져야 한다
@@ -171,12 +224,16 @@ export async function restoreDocument(): Promise<EditorDocument | null> {
   if (!stored || !Array.isArray(stored.layers)) return null
 
   const images: RestoredImages = {}
-  for (const layer of stored.layers) {
-    if (layer?.source?.kind !== 'raster') continue
-    const blob = await getImage(layer.source.imageKey)
+  const wanted = stored.layers
+    .filter((layer) => layer?.source?.kind === 'raster')
+    .map((layer) => (layer.source as { imageKey: string }).imageKey)
+  if (stored.canvas?.image?.key) wanted.push(stored.canvas.image.key)
+
+  for (const key of wanted) {
+    const blob = await getImage(key)
     if (!blob) continue
     try {
-      images[layer.source.imageKey] = { bitmap: await createImageBitmap(blob), blob }
+      images[key] = { bitmap: await createImageBitmap(blob), blob }
     } catch {
       // 되살리지 못한 그림은 건너뛴다
     }

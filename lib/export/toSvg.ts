@@ -1,4 +1,4 @@
-import type { EditorDocument, Layer } from '@/lib/document/types'
+import type { CanvasImageFit, EditorDocument, Layer } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
 import { spacedVectorSource } from '@/lib/render/layerSource'
 import { warpCommandsToPathData } from '@/lib/render/warpShape'
@@ -41,9 +41,17 @@ export function hasRasterLayer(document: EditorDocument): boolean {
  * 문서를 SVG 문자열로 만든다.
  * 벡터 레이어는 왜곡된 실제 경로로 들어가므로 확대해도 깨지지 않는다.
  */
+/** 배경 이미지를 캔버스에 맞추는 방식을 SVG 표기로 옮긴다 */
+const FIT_TO_ASPECT: Record<CanvasImageFit, string> = {
+  cover: 'xMidYMid slice',
+  contain: 'xMidYMid meet',
+  stretch: 'none',
+}
+
 export function documentToSvgMarkup(
   document: EditorDocument,
-  bakedRasters: BakedRasterMap
+  bakedRasters: BakedRasterMap,
+  backgroundImageHref: string | null = null
 ): string {
   const { canvas } = document
   const parts: string[] = []
@@ -55,6 +63,13 @@ export function documentToSvgMarkup(
   if (canvas.background) {
     parts.push(
       `<rect width="${canvas.width}" height="${canvas.height}" fill="${escapeAttribute(canvas.background)}"/>`
+    )
+  }
+
+  if (backgroundImageHref) {
+    const href = escapeAttribute(backgroundImageHref)
+    parts.push(
+      `<image href="${href}" xlink:href="${href}" x="0" y="0" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="${FIT_TO_ASPECT[canvas.imageFit]}"/>`
     )
   }
 
@@ -74,7 +89,8 @@ export function documentToSvgMarkup(
           )
           if (!d) return ''
           const opacity = shape.opacity < 1 ? ` opacity="${shape.opacity}"` : ''
-          return `<path d="${d}" fill="${escapeAttribute(shape.fill)}" fill-rule="${shape.fillRule}"${opacity}/>`
+          const fill = layer.fillOverride ?? shape.fill
+          return `<path d="${d}" fill="${escapeAttribute(fill)}" fill-rule="${shape.fillRule}"${opacity}/>`
         })
         .filter(Boolean)
         .join('')

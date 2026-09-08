@@ -6,6 +6,7 @@ import { MultiSelectionOutline, SelectionFrame } from '@/components/editor/Selec
 import { WarpHandles, type MeshLine } from '@/components/editor/WarpHandles'
 import { Text } from '@/components/ui/Text'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
+import { useObjectUrl } from '@/hooks/useObjectUrl'
 import { useLayerMarquee } from '@/hooks/useLayerMarquee'
 import { useWarpInteraction } from '@/hooks/useWarpInteraction'
 import { useWarpMarquee } from '@/hooks/useWarpMarquee'
@@ -13,6 +14,7 @@ import { boundsOfLayers } from '@/lib/render/canvasBounds'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import { meshColumnHandleIds, meshRowHandleIds } from '@/lib/render/warpSelection'
+import type { CanvasImageFit } from '@/lib/document/types'
 import type { Point } from '@/lib/warp/types'
 import { MAX_ZOOM, MIN_ZOOM, useEditorStore } from '@/store/editorStore'
 
@@ -21,12 +23,20 @@ const FIT_PADDING = 64
 /** 휠 한 번에 바뀌는 확대 비율 */
 const ZOOM_STEP = 1.0015
 
+/** 배경 이미지를 캔버스에 맞추는 방식을 CSS 표기로 옮긴다 */
+const FIT_TO_BACKGROUND_SIZE: Record<CanvasImageFit, string> = {
+  cover: 'cover',
+  contain: 'contain',
+  stretch: '100% 100%',
+}
+
 export function CanvasStage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const document = useEditorStore((state) => state.document)
   const viewport = useEditorStore((state) => state.viewport)
   const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
   const selectedWarpHandles = useEditorStore((state) => state.selectedWarpHandles)
+  const backgroundImageUrl = useObjectUrl(document.canvas.image?.blob)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   const setViewport = useEditorStore((state) => state.setViewport)
   const selectLayers = useEditorStore((state) => state.selectLayers)
@@ -234,6 +244,18 @@ export function CanvasStage() {
           transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
         }}
       >
+        {backgroundImageUrl && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: `url(${backgroundImageUrl})`,
+              backgroundSize: FIT_TO_BACKGROUND_SIZE[document.canvas.imageFit],
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+        )}
+
         {document.layers.map((layer) => (
           <LayerView
             key={layer.id}

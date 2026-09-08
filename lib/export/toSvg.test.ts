@@ -24,12 +24,13 @@ function vectorLayer(overrides: Partial<Layer> = {}): Layer {
     transform: { x: 10, y: 20, scaleX: 2, scaleY: 1, rotation: 15 },
     warp: createWarp('arc'),
     letterSpacing: 0,
+    fillOverride: null,
     ...overrides,
   }
 }
 
 function doc(layers: Layer[], background: string | null = '#ffffff'): EditorDocument {
-  return { canvas: { width: 400, height: 300, background }, layers }
+  return { canvas: { width: 400, height: 300, background, image: null, imageFit: 'cover' }, layers }
 }
 
 describe('documentToSvgMarkup', () => {
@@ -79,6 +80,7 @@ describe('documentToSvgMarkup', () => {
       transform: { x: 5, y: 5, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
     letterSpacing: 0,
+    fillOverride: null,
     }
     const markup = documentToSvgMarkup(doc([raster]), {
       r1: { href: 'data:image/png;base64,AAA', bounds: { minX: 0, minY: 0, maxX: 200, maxY: 100 } },
@@ -104,6 +106,7 @@ describe('documentToSvgMarkup', () => {
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
       warp: createWarp('arc'),
     letterSpacing: 0,
+    fillOverride: null,
     }
     expect(documentToSvgMarkup(doc([raster]), {})).not.toContain('<image')
   })
@@ -115,6 +118,31 @@ describe('documentToSvgMarkup', () => {
     const markup = documentToSvgMarkup(doc([layer]), {})
     expect(markup).not.toContain('<script>')
     expect(markup).toContain('&quot;')
+  })
+})
+
+describe('색과 배경', () => {
+  it('레이어 색을 덮어쓰면 도형 원래 색 대신 그 색으로 저장된다', () => {
+    const markup = documentToSvgMarkup(doc([vectorLayer({ fillOverride: '#00ff00' })]), {})
+    expect(markup).toContain('fill="#00ff00"')
+    expect(markup).not.toContain('fill="#ff0000"')
+  })
+
+  it('배경 이미지를 넘기면 배경색 위에 깔린다', () => {
+    const markup = documentToSvgMarkup(doc([vectorLayer()]), {}, 'data:image/png;base64,BBB')
+    expect(markup).toContain('data:image/png;base64,BBB')
+    expect(markup.indexOf('<rect')).toBeLessThan(markup.indexOf('<image'))
+    expect(markup.indexOf('<image')).toBeLessThan(markup.indexOf('<path'))
+  })
+
+  it('맞춤 방식이 SVG 표기로 옮겨진다', () => {
+    const base = doc([vectorLayer()])
+    expect(
+      documentToSvgMarkup({ ...base, canvas: { ...base.canvas, imageFit: 'contain' } }, {}, 'x')
+    ).toContain('preserveAspectRatio="xMidYMid meet"')
+    expect(
+      documentToSvgMarkup({ ...base, canvas: { ...base.canvas, imageFit: 'stretch' } }, {}, 'x')
+    ).toContain('preserveAspectRatio="none"')
   })
 })
 

@@ -61,6 +61,16 @@ function bakeRasters(document: EditorDocument, scale: number): BakedRasterMap {
   return baked
 }
 
+/** 파일을 data URL로 바꾼다 — SVG 안에 그림을 끼워 넣을 때 쓴다 */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('배경 이미지를 읽지 못했습니다.'))
+    reader.readAsDataURL(blob)
+  })
+}
+
 /** SVG 문자열을 이미지로 불러온다 */
 function loadSvgImage(markup: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -108,7 +118,10 @@ export async function exportDocument(
   const prepared: EditorDocument = { ...document, canvas: canvasSettings }
 
   const scale = options.format === 'svg' ? 1 : options.scale
-  const markup = documentToSvgMarkup(prepared, bakeRasters(prepared, scale))
+  const backgroundHref = prepared.canvas.image
+    ? await blobToDataUrl(prepared.canvas.image.blob)
+    : null
+  const markup = documentToSvgMarkup(prepared, bakeRasters(prepared, scale), backgroundHref)
   const name = baseFileName(document)
 
   if (options.format === 'svg') {

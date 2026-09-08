@@ -46,13 +46,33 @@ export interface Layer {
    * 이미지 레이어에는 글자 단위가 없어 쓰이지 않는다.
    */
   letterSpacing: number
+  /**
+   * 글자 색을 덮어쓴다. null이면 원본 SVG의 색을 그대로 쓴다.
+   * 이미지 레이어에는 쓰이지 않는다.
+   */
+  fillOverride: string | null
+}
+
+/** 배경 이미지를 캔버스에 맞추는 방식 */
+export type CanvasImageFit = 'cover' | 'contain' | 'stretch'
+
+/** 캔버스 배경으로 깔아 둔 이미지 */
+export interface CanvasImage {
+  bitmap: ImageBitmap
+  /** 새로고침 후 되살리기 위해 들고 있는 원본 파일 */
+  blob: Blob
+  width: number
+  height: number
 }
 
 export interface CanvasSettings {
   width: number
   height: number
-  /** null이면 투명 배경 */
+  /** 배경색. null이면 색 없이 투명하다. */
   background: string | null
+  /** 배경 이미지. 색 위에 덮인다. */
+  image: CanvasImage | null
+  imageFit: CanvasImageFit
 }
 
 export interface EditorDocument {
