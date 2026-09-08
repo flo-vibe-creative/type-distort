@@ -249,7 +249,10 @@ export function CanvasStage() {
             style={{
               backgroundImage: `url(${backgroundImageUrl})`,
               backgroundSize: FIT_TO_BACKGROUND_SIZE[document.canvas.imageFit],
-              backgroundPosition: 'center',
+              backgroundPosition:
+                document.canvas.imageFit === 'cover'
+                  ? `${document.canvas.imagePosition.x * 100}% ${document.canvas.imagePosition.y * 100}%`
+                  : 'center',
               backgroundRepeat: 'no-repeat',
             }}
           />

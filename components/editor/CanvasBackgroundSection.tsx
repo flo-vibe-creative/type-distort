@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { ColorField } from '@/components/editor/ColorField'
 import { PanelSection } from '@/components/editor/PanelSection'
+import { SliderField } from '@/components/editor/SliderField'
 import { Text } from '@/components/ui/Text'
 import { useObjectUrl } from '@/hooks/useObjectUrl'
 import type { CanvasImageFit } from '@/lib/document/types'
@@ -17,7 +18,7 @@ const FIT_LABEL: Record<CanvasImageFit, string> = {
 }
 
 const FIT_HINT: Record<CanvasImageFit, string> = {
-  cover: '대지를 꽉 채우고 넘치는 부분은 잘립니다.',
+  cover: '대지를 꽉 채우고 넘치는 부분은 잘립니다. 아래에서 어느 쪽을 남길지 정할 수 있고, 어떻게 옮겨도 여백은 생기지 않습니다.',
   contain: '이미지 전체가 보이도록 넣고 남는 곳은 배경색이 비칩니다.',
   stretch: '비율을 무시하고 대지에 정확히 맞춥니다.',
 }
@@ -55,6 +56,7 @@ export function CanvasBackgroundSection() {
   const setBackgroundHidden = useEditorStore((state) => state.setBackgroundHidden)
   const setCanvasImage = useEditorStore((state) => state.setCanvasImage)
   const setCanvasImageFit = useEditorStore((state) => state.setCanvasImageFit)
+  const setCanvasImagePosition = useEditorStore((state) => state.setCanvasImagePosition)
   const notify = useNoticeStore((state) => state.notify)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -98,7 +100,10 @@ export function CanvasBackgroundSection() {
               style={{
                 backgroundImage: `url(${previewUrl})`,
                 backgroundSize: 'cover',
-                backgroundPosition: 'center',
+                backgroundPosition:
+                  canvas.imageFit === 'cover'
+                    ? `${canvas.imagePosition.x * 100}% ${canvas.imagePosition.y * 100}%`
+                    : 'center',
               }}
             />
           )}
@@ -128,6 +133,40 @@ export function CanvasBackgroundSection() {
           <Text variant="caption12" color="text-fg-tertiary">
             {FIT_HINT[canvas.imageFit]}
           </Text>
+
+          {canvas.imageFit === 'cover' && (
+            <>
+              <SliderField
+                label="가로 위치"
+                min={0}
+                max={1}
+                step={0.01}
+                suffix="%"
+                displayScale={100}
+                value={canvas.imagePosition.x}
+                onChange={(x) => setCanvasImagePosition({ ...canvas.imagePosition, x })}
+              />
+              <SliderField
+                label="세로 위치"
+                min={0}
+                max={1}
+                step={0.01}
+                suffix="%"
+                displayScale={100}
+                value={canvas.imagePosition.y}
+                onChange={(y) => setCanvasImagePosition({ ...canvas.imagePosition, y })}
+              />
+              <button
+                type="button"
+                onClick={() => setCanvasImagePosition({ x: 0.5, y: 0.5 })}
+                className="rounded-md border border-border py-1.5 hover:bg-surface-minimal"
+              >
+                <Text variant="caption12" as="span" color="text-fg-secondary">
+                  가운데로
+                </Text>
+              </button>
+            </>
+          )}
         </>
       )}
 

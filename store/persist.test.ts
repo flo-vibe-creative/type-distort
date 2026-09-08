@@ -55,6 +55,7 @@ const document: EditorDocument = {
     background: '#fafafa',
     image: null,
     imageFit: 'cover',
+    imagePosition: { x: 0.5, y: 0.5 },
     backgroundHidden: true,
   },
   layers: [vectorLayer(), rasterLayer()],

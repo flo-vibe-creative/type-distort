@@ -74,6 +74,11 @@ export interface CanvasSettings {
   image: CanvasImage | null
   imageFit: CanvasImageFit
   /**
+   * 채우기일 때 이미지를 어디에 맞출지 (0~1). 0.5면 가운데.
+   * 넘치는 양 안에서만 움직이므로 어디에 두든 여백이 생기지 않는다.
+   */
+  imagePosition: { x: number; y: number }
+  /**
    * 배경을 잠시 감춘다. 켜면 색과 이미지가 모두 보이지 않아 투명해지지만,
    * 골라 둔 값은 그대로 남아 있어 끄면 곧바로 되돌아온다.
    */

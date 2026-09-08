@@ -18,6 +18,7 @@ export const DEFAULT_CANVAS: CanvasSettings = {
   background: '#ffffff',
   image: null,
   imageFit: 'cover',
+  imagePosition: { x: 0.5, y: 0.5 },
   backgroundHidden: false,
 }
 
@@ -87,6 +88,7 @@ interface EditorState {
   setBackgroundHidden: (hidden: boolean) => void
   setCanvasImage: (image: CanvasImage | null) => void
   setCanvasImageFit: (fit: CanvasImageFit) => void
+  setCanvasImagePosition: (position: { x: number; y: number }) => void
   setLayerFill: (id: string, fill: string | null) => void
   /** 보이는 레이어 전체에 맞춰 캔버스를 자른다 */
   fitCanvasToContent: (padding?: number) => void
@@ -337,6 +339,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setCanvasImageFit: (imageFit) =>
     set((state) =>
       withHistory(state, { ...state.document, canvas: { ...state.document.canvas, imageFit } })
+    ),
+
+  setCanvasImagePosition: (imagePosition) =>
+    set((state) =>
+      withHistory(state, {
+        ...state.document,
+        canvas: { ...state.document.canvas, imagePosition },
+      })
     ),
 
   setLayerFill: (id, fill) =>

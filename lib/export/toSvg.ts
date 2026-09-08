@@ -1,5 +1,6 @@
-import type { CanvasImageFit, EditorDocument, Layer } from '@/lib/document/types'
+import type { EditorDocument, Layer } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
+import { backgroundImageRect } from '@/lib/render/backgroundImage'
 import { spacedVectorSource } from '@/lib/render/layerSource'
 import { warpCommandsToPathData } from '@/lib/render/warpShape'
 
@@ -41,13 +42,6 @@ export function hasRasterLayer(document: EditorDocument): boolean {
  * 문서를 SVG 문자열로 만든다.
  * 벡터 레이어는 왜곡된 실제 경로로 들어가므로 확대해도 깨지지 않는다.
  */
-/** 배경 이미지를 캔버스에 맞추는 방식을 SVG 표기로 옮긴다 */
-const FIT_TO_ASPECT: Record<CanvasImageFit, string> = {
-  cover: 'xMidYMid slice',
-  contain: 'xMidYMid meet',
-  stretch: 'none',
-}
-
 export function documentToSvgMarkup(
   document: EditorDocument,
   bakedRasters: BakedRasterMap,
@@ -66,10 +60,13 @@ export function documentToSvgMarkup(
     )
   }
 
-  if (backgroundImageHref && !canvas.backgroundHidden) {
+  if (backgroundImageHref && !canvas.backgroundHidden && canvas.image) {
     const href = escapeAttribute(backgroundImageHref)
+    // 자리와 크기를 미리 계산해 넣으므로 비율 맞춤은 SVG에 맡기지 않는다.
+    // 넘치는 부분은 SVG 바깥이라 저절로 잘린다.
+    const rect = backgroundImageRect(canvas, canvas.image, canvas.imageFit, canvas.imagePosition)
     parts.push(
-      `<image href="${href}" xlink:href="${href}" x="0" y="0" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="${FIT_TO_ASPECT[canvas.imageFit]}"/>`
+      `<image href="${href}" xlink:href="${href}" x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" preserveAspectRatio="none"/>`
     )
   }
 

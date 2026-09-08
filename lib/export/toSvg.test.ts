@@ -37,6 +37,7 @@ function doc(layers: Layer[], backgroundHidden = false): EditorDocument {
       background: '#ffffff',
       image: null,
       imageFit: 'cover',
+    imagePosition: { x: 0.5, y: 0.5 },
       backgroundHidden,
     },
     layers,
@@ -61,7 +62,13 @@ describe('documentToSvgMarkup', () => {
   })
 
   it('배경을 감춰 두면 배경 이미지도 넣지 않는다', () => {
-    const markup = documentToSvgMarkup(doc([vectorLayer()], true), {}, 'data:image/png;base64,BBB')
+    const base = doc([vectorLayer()], true)
+    const image = { bitmap: null as unknown as ImageBitmap, blob: new Blob(), width: 800, height: 600 }
+    const markup = documentToSvgMarkup(
+      { ...base, canvas: { ...base.canvas, image } },
+      {},
+      'data:image/png;base64,BBB'
+    )
     expect(markup).not.toContain('<image')
   })
 
@@ -144,20 +151,49 @@ describe('색과 배경', () => {
   })
 
   it('배경 이미지를 넘기면 배경색 위에 깔린다', () => {
-    const markup = documentToSvgMarkup(doc([vectorLayer()]), {}, 'data:image/png;base64,BBB')
+    const base = doc([vectorLayer()])
+    const image = { bitmap: null as unknown as ImageBitmap, blob: new Blob(), width: 800, height: 600 }
+    const markup = documentToSvgMarkup(
+      { ...base, canvas: { ...base.canvas, image } },
+      {},
+      'data:image/png;base64,BBB'
+    )
     expect(markup).toContain('data:image/png;base64,BBB')
     expect(markup.indexOf('<rect')).toBeLessThan(markup.indexOf('<image'))
     expect(markup.indexOf('<image')).toBeLessThan(markup.indexOf('<path'))
   })
 
-  it('맞춤 방식이 SVG 표기로 옮겨진다', () => {
+  it('배경 이미지를 미리 계산한 자리에 넣는다', () => {
     const base = doc([vectorLayer()])
-    expect(
-      documentToSvgMarkup({ ...base, canvas: { ...base.canvas, imageFit: 'contain' } }, {}, 'x')
-    ).toContain('preserveAspectRatio="xMidYMid meet"')
-    expect(
-      documentToSvgMarkup({ ...base, canvas: { ...base.canvas, imageFit: 'stretch' } }, {}, 'x')
-    ).toContain('preserveAspectRatio="none"')
+    // 캔버스 400x300, 이미지 800x300 → 채우기는 세로에 맞춰 800x300으로 그린다
+    const image = { bitmap: null as unknown as ImageBitmap, blob: new Blob(), width: 800, height: 300 }
+    const withImage = { ...base, canvas: { ...base.canvas, image } }
+
+    const centered = documentToSvgMarkup(withImage, {}, 'x')
+    expect(centered).toContain('x="-200"')
+    expect(centered).toContain('width="800"')
+
+    const left = documentToSvgMarkup(
+      { ...withImage, canvas: { ...withImage.canvas, imagePosition: { x: 0, y: 0.5 } } },
+      {},
+      'x'
+    )
+    expect(left).toContain('x="0"')
+  })
+
+  it('맞추기는 위치와 무관하게 가운데에 놓인다', () => {
+    const base = doc([vectorLayer()])
+    const image = { bitmap: null as unknown as ImageBitmap, blob: new Blob(), width: 800, height: 300 }
+    const markup = documentToSvgMarkup(
+      {
+        ...base,
+        canvas: { ...base.canvas, image, imageFit: 'contain', imagePosition: { x: 0, y: 0 } },
+      },
+      {},
+      'x'
+    )
+    expect(markup).toContain('width="400"')
+    expect(markup).toContain('y="75"')
   })
 })
 

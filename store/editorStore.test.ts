@@ -345,6 +345,7 @@ describe('되돌리기 / 다시하기', () => {
         background: '#ffffff',
         image: null,
         imageFit: 'cover',
+        imagePosition: { x: 0.5, y: 0.5 },
         backgroundHidden: false,
       },
       layers: [],
@@ -553,5 +554,18 @@ describe('되돌리기 안전장치', () => {
     store().updateTransform(a.id, { x: x + 10 })
     store().undo()
     expect(store().document.layers[0].transform.x).toBe(x)
+  })
+})
+
+describe('배경 이미지 위치', () => {
+  it('기본은 가운데다', () => {
+    expect(store().document.canvas.imagePosition).toEqual({ x: 0.5, y: 0.5 })
+  })
+
+  it('위치를 바꾸고 되돌릴 수 있다', () => {
+    store().setCanvasImagePosition({ x: 0, y: 1 })
+    expect(store().document.canvas.imagePosition).toEqual({ x: 0, y: 1 })
+    store().undo()
+    expect(store().document.canvas.imagePosition).toEqual({ x: 0.5, y: 0.5 })
   })
 })
