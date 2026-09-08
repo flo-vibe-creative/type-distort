@@ -42,6 +42,15 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
     sliders: [
       { key: 'angle', label: '각도', min: -360, max: 360, step: 1, unit: '°' },
       {
+        key: 'anchor',
+        label: '기준점',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        unit: '%',
+        displayScale: 100,
+      },
+      {
         key: 'baseline',
         label: '기준선',
         min: -0.5,

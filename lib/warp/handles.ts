@@ -9,17 +9,18 @@ export interface WarpHandle {
   /** 레이어 좌표계에서의 위치 */
   local: Point
   /** 핸들 종류 — 그리는 모양이 다르다 */
-  role: 'point' | 'radius' | 'baseline'
+  role: 'point' | 'radius' | 'anchor'
 }
 
 /** 현재 왜곡 상태에서 조작점들이 놓일 자리 */
 export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
   switch (warp.type) {
     case 'arc': {
-      const baseline = warp.params.baseline
+      const { baseline, anchor } = warp.params
       return [
         { id: 'arc-start', local: applyWarp(warp, 0, baseline, size), role: 'point' },
-        { id: 'arc-baseline', local: applyWarp(warp, 0.5, baseline, size), role: 'baseline' },
+        // 기준점은 곡선 위 어디에나 놓일 수 있다
+        { id: 'arc-anchor', local: applyWarp(warp, anchor, baseline, size), role: 'anchor' },
         { id: 'arc-end', local: applyWarp(warp, 1, baseline, size), role: 'point' },
       ]
     }
@@ -82,8 +83,8 @@ export function dragWarpHandle(
 
   switch (warp.type) {
     case 'arc': {
-      if (handleId === 'arc-baseline') {
-        return dragArcBaseline(warp.params, size, localPoint)
+      if (handleId === 'arc-anchor') {
+        return dragArcAnchor(warp.params, size, localPoint)
       }
       const u = handleId === 'arc-start' ? 0 : handleId === 'arc-end' ? 1 : null
       if (u === null) return null
@@ -239,56 +240,38 @@ function moveTogether(
   return { [key]: points }
 }
 
-/** 이보다 작은 각도에서는 반지름이 발산해 원 위를 도는 것이 의미가 없다 */
-const MIN_ROTATABLE_ANGLE = 1
-
-/** 두 각도가 얼마나 떨어져 있는지 (한 바퀴를 넘어가는 것을 감안한다) */
-function angularDistance(a: number, b: number): number {
-  const diff = Math.abs(a - b) % 360
-  return diff > 180 ? 360 - diff : diff
-}
-
-function wrapDegrees(value: number): number {
-  const wrapped = ((value + 180) % 360 + 360) % 360 - 180
-  return wrapped
-}
+/** 이보다 작은 각도에서는 반지름이 발산해 원이 사실상 직선이 된다 */
+const MIN_CURVED_ANGLE = 1
 
 /**
- * 기준점을 끌었을 때의 기준선과 회전을 함께 구한다.
+ * 기준점을 끌었을 때의 기준점 위치와 기준선을 함께 구한다.
  *
- * 기준점은 반지름 R인 원 위를 도는데, 그 원의 중심 높이는 기준선이 정한다.
- * 가로로 얼마나 갔는지에서 회전을, 세로 위치에서 기준선을 읽으면 두 값이 한 번에 나온다.
- * 가로에서 나오는 각도는 두 가지 답이 있으므로 지금 값에 가까운 쪽을 고른다.
+ * 기준점은 휘기 전 자리에 그대로 남으므로, 끈 자리의 가로에서 글자의 몇 번째 지점인지를,
+ * 세로에서 기준선을 읽으면 두 값이 한 번에 나온다. 회전은 건드리지 않는다.
  */
-function dragArcBaseline(
+function dragArcAnchor(
   params: ArcParams,
   size: WarpContext,
   localPoint: Point
 ): Record<string, unknown> {
   const clampBaseline = (value: number) =>
     Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, value))
+  const clampAnchor = (value: number) => Math.min(1, Math.max(0, value))
 
-  // 각도가 거의 없으면 원이 사실상 직선이라 위아래로만 움직인다
-  if (Math.abs(params.angle) < MIN_ROTATABLE_ANGLE) {
-    return { baseline: clampBaseline(localPoint.y / size.height) }
+  // 각도가 거의 없으면 원이 사실상 직선이라 회전을 셈에 넣을 필요가 없다
+  if (Math.abs(params.angle) < MIN_CURVED_ANGLE) {
+    return {
+      anchor: clampAnchor(localPoint.x / size.width),
+      baseline: clampBaseline(localPoint.y / size.height),
+    }
   }
 
   const sweep = (params.angle * Math.PI) / 180
   const radius = size.width / sweep
-  const sine = Math.max(-1, Math.min(1, (localPoint.x - size.width / 2) / radius))
-  const primary = (Math.asin(sine) * 180) / Math.PI
+  const spin = (params.rotation * Math.PI) / 180
 
-  // 같은 가로 위치를 만드는 각도는 둘이다. 끌던 흐름이 끊기지 않게 가까운 쪽을 고른다.
-  const candidates = [primary, wrapDegrees(180 - primary)]
-  const rotation = candidates.reduce((best, candidate) =>
-    angularDistance(candidate, params.rotation) < angularDistance(best, params.rotation)
-      ? candidate
-      : best
-  )
-
-  const rise = radius * (1 - Math.cos((rotation * Math.PI) / 180))
   return {
-    rotation: Math.round(rotation * 100) / 100,
-    baseline: clampBaseline((localPoint.y - rise) / size.height),
+    anchor: clampAnchor((localPoint.x - radius * Math.sin(spin)) / size.width),
+    baseline: clampBaseline((localPoint.y - radius * (1 - Math.cos(spin))) / size.height),
   }
 }

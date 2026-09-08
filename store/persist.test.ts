@@ -127,3 +127,23 @@ describe('deserializeDocument', () => {
     expect(restored!.layers.map((l) => l.id)).toEqual(['v1'])
   })
 })
+
+describe('예전 저장본 되살리기', () => {
+  it('저장한 뒤에 생긴 왜곡 값은 기본값으로 채운다', () => {
+    const stored = serializeDocument(document)
+    // 아크에 기준점·회전이 없던 시절의 저장본을 흉내낸다
+    stored.layers[0].warp = { type: 'arc', params: { angle: 90, strength: 1 } } as never
+
+    const restored = deserializeDocument(stored, {})
+    const warp = restored!.layers[0].warp
+    expect(warp.type).toBe('arc')
+    expect(warp.params).toMatchObject({ angle: 90, strength: 1, anchor: 0.5, baseline: 0.5, rotation: 0 })
+  })
+
+  it('저장본에 있던 값은 기본값에 덮이지 않는다', () => {
+    const stored = serializeDocument(document)
+    stored.layers[0].warp = { type: 'arc', params: { angle: 90, anchor: 0.2 } } as never
+    const restored = deserializeDocument(stored, {})
+    expect(restored!.layers[0].warp.params).toMatchObject({ anchor: 0.2 })
+  })
+})

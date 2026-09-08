@@ -179,7 +179,7 @@ export function WarpHandles({
             strokeWidth={selected ? 2 : 1.5}
             vectorEffect="non-scaling-stroke"
             style={{
-              cursor: handle.role === 'baseline' ? 'ns-resize' : 'grab',
+              cursor: handle.role === 'anchor' ? 'move' : 'grab',
               pointerEvents: 'auto',
             }}
             onPointerDown={(event) => onHandleDown(handle.id, event)}

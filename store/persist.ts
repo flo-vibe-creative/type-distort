@@ -110,10 +110,23 @@ function isValidWarp(value: unknown): value is WarpState {
   return !!warp && WARP_TYPES.includes(warp.type as WarpType) && typeof warp.params === 'object'
 }
 
+/**
+ * 저장한 뒤에 새로 생긴 왜곡 값이 있을 수 있으므로, 기본값 위에 저장본을 덮어쓴다.
+ * 이렇게 해두면 예전 저장본을 열어도 빠진 값이 없다.
+ */
+function restoreWarp(stored: unknown): WarpState {
+  if (!isValidWarp(stored)) return createWarp('arc')
+  const defaults = createWarp(stored.type)
+  return {
+    type: stored.type,
+    params: { ...defaults.params, ...stored.params },
+  } as WarpState
+}
+
 function restoreLayer(stored: StoredLayer, images: RestoredImages): Layer | null {
   if (!stored || typeof stored.id !== 'string' || !stored.source) return null
   if (!isValidTransform(stored.transform)) return null
-  const warp = isValidWarp(stored.warp) ? stored.warp : createWarp('arc')
+  const warp = restoreWarp(stored.warp)
 
   const base = {
     id: stored.id,

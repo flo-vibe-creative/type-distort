@@ -9,6 +9,11 @@ export interface ArcParams {
    */
   baseline: number
   /**
+   * 기준점이 글자의 어느 지점에 붙을지 (0~1). 0이면 글자 맨 앞, 1이면 맨 뒤, 0.5면 한가운데.
+   * 이 지점은 휘어도 제자리에 남고, 나머지가 그 둘레로 감긴다.
+   */
+  anchor: number
+  /**
    * 호를 따라 글자를 돌린 각도(도). 0이면 글자 가운데가 호의 꼭대기에 온다.
    * 원 위에서 글자가 앉은 자리를 옮기는 값이다.
    */
@@ -20,6 +25,7 @@ export interface ArcParams {
 export const ARC_DEFAULT: ArcParams = {
   angle: 0,
   baseline: 0.5,
+  anchor: 0.5,
   rotation: 0,
   strength: 1,
 }
@@ -32,6 +38,8 @@ const MIN_ANGLE_DEG = 1e-4
  *
  * 기준선(v = baseline)이 반지름 R인 원호 위에 놓이고,
  * 거기서 위아래로 떨어진 만큼 반지름이 늘거나 줄어든다.
+ *
+ * 기준점(u = anchor)은 휘기 전 자리에 그대로 남고 나머지가 그 둘레로 감긴다.
  * 회전은 그 원 위에서 글자가 앉은 자리를 옮긴다.
  */
 export const warpArc: WarpFn<ArcParams> = (u, v, params, ctx) => {
@@ -45,11 +53,11 @@ export const warpArc: WarpFn<ArcParams> = (u, v, params, ctx) => {
   const sweep = (params.angle * Math.PI) / 180
   // 호의 길이가 원본 너비와 같아지는 반지름 — 글자가 늘어나지 않는다
   const radius = ctx.width / sweep
-  const theta = (u - 0.5) * sweep + (params.rotation * Math.PI) / 180
+  const theta = (u - params.anchor) * sweep + (params.rotation * Math.PI) / 180
   // 기준선에서 위아래로 떨어진 만큼 반지름을 조절한다
   const r = radius + (params.baseline - v) * ctx.height
 
-  const arcX = ctx.width / 2 + r * Math.sin(theta)
+  const arcX = params.anchor * ctx.width + r * Math.sin(theta)
   const arcY = ctx.height * params.baseline + radius - r * Math.cos(theta)
 
   const t = params.strength

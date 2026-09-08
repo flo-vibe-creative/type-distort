@@ -148,3 +148,46 @@ describe('warpArc — 회전', () => {
     expect(span(55)).toBeCloseTo(span(0), 6)
   })
 })
+
+describe('warpArc — 기준점', () => {
+  it('기본 기준점은 글자 한가운데다', () => {
+    expect(ARC_DEFAULT.anchor).toBe(0.5)
+  })
+
+  it('기준점을 어디에 두든 각도가 0이면 원본 그대로다', () => {
+    for (const anchor of [0, 0.25, 0.5, 1]) {
+      const p = warpArc(0.3, 0.7, { ...ARC_DEFAULT, angle: 0, anchor }, ctx)
+      expect(p.x).toBeCloseTo(0.3 * ctx.width, 6)
+      expect(p.y).toBeCloseTo(0.7 * ctx.height, 6)
+    }
+  })
+
+  it('기준점으로 삼은 지점은 휘어도 제자리에 남는다', () => {
+    for (const anchor of [0, 0.25, 0.5, 0.8, 1]) {
+      const params = { ...ARC_DEFAULT, angle: 140, anchor }
+      const p = warpArc(anchor, params.baseline, params, ctx)
+      expect(p.x).toBeCloseTo(anchor * ctx.width, 6)
+      expect(p.y).toBeCloseTo(params.baseline * ctx.height, 6)
+    }
+  })
+
+  it('기준점을 앞으로 옮기면 뒤쪽 글자가 크게 돌아간다', () => {
+    const params = { ...ARC_DEFAULT, angle: 140 }
+    const tailAtCenter = warpArc(1, 0.5, params, ctx)
+    const tailAtFront = warpArc(1, 0.5, { ...params, anchor: 0 }, ctx)
+    // 앞을 붙잡아 두면 끝점이 더 멀리 돌아 나간다
+    const travel = (p: { x: number; y: number }) => Math.hypot(p.x - ctx.width, p.y - 0.5 * ctx.height)
+    expect(travel(tailAtFront)).toBeGreaterThan(travel(tailAtCenter))
+  })
+
+  it('기준점을 옮겨도 호의 길이는 그대로다', () => {
+    const params = { ...ARC_DEFAULT, angle: 140 }
+    const span = (anchor: number) => {
+      const a = warpArc(0, 0.5, { ...params, anchor }, ctx)
+      const b = warpArc(1, 0.5, { ...params, anchor }, ctx)
+      return Math.hypot(b.x - a.x, b.y - a.y)
+    }
+    expect(span(0)).toBeCloseTo(span(0.5), 6)
+    expect(span(1)).toBeCloseTo(span(0.5), 6)
+  })
+})

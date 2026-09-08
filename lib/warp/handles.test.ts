@@ -11,10 +11,10 @@ import { applyWarp } from '@/lib/warp/registry'
 const size = { width: 200, height: 100 }
 
 describe('아크 핸들', () => {
-  it('양 끝과 기준선 가운데에 핸들이 놓인다', () => {
+  it('양 끝과 기준점에 핸들이 놓인다', () => {
     const handles = warpHandles(createWarp('arc'), size)
-    expect(handles.map((h) => h.id)).toEqual(['arc-start', 'arc-baseline', 'arc-end'])
-    expect(handles[1].role).toBe('baseline')
+    expect(handles.map((h) => h.id)).toEqual(['arc-start', 'arc-anchor', 'arc-end'])
+    expect(handles[1].role).toBe('anchor')
   })
 
   it('핸들은 실제로 왜곡된 위치에 붙어 있다', () => {
@@ -35,63 +35,65 @@ describe('아크 핸들', () => {
     handles.forEach((handle) => expect(handle.local.y).toBeCloseTo(size.height, 6))
   })
 
-  it('각도가 없을 때는 기준점이 위아래로만 움직인다', () => {
-    const patch = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 100, y: 80 })
-    expect(patch).toEqual({ baseline: 0.8 })
-  })
-
-  it('휘어 있을 때 기준점을 끌면 기준선과 회전이 함께 정해진다', () => {
+  it('기준점을 옮기면 그 자리로 핸들이 따라간다', () => {
     const warp = createWarp('arc')
     if (warp.type !== 'arc') throw new Error('arc')
-    warp.params.angle = 120
+    warp.params.angle = 140
+    warp.params.anchor = 0.2
+    const handles = warpHandles(warp, size)
+    expect(handles[1].local.x).toBeCloseTo(0.2 * size.width, 6)
+  })
 
-    // 회전 40도, 기준선 0.5 인 자리에 놓았을 때의 기준점 위치를 목표로 삼는다
-    const target = applyWarp(
-      { type: 'arc', params: { ...warp.params, rotation: 40 } },
-      0.5,
-      0.5,
-      size
-    )
-    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
-    expect(patch!.rotation as number).toBeCloseTo(40, 1)
-    expect(patch!.baseline as number).toBeCloseTo(0.5, 3)
+  it('각도가 없을 때는 끈 자리를 그대로 읽는다', () => {
+    const patch = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 40, y: 80 })
+    expect(patch).toEqual({ anchor: 0.2, baseline: 0.8 })
+  })
+
+  it('기준점을 곡선 앞쪽·뒤쪽 어디로든 옮길 수 있다', () => {
+    const warp = createWarp('arc')
+    if (warp.type !== 'arc') throw new Error('arc')
+    warp.params.angle = 140
+
+    for (const anchor of [0, 0.2, 0.75, 1]) {
+      const target = applyWarp(
+        { type: 'arc', params: { ...warp.params, anchor } },
+        anchor,
+        warp.params.baseline,
+        size
+      )
+      const patch = dragWarpHandle(warp, size, 'arc-anchor', target)
+      expect(patch!.anchor as number).toBeCloseTo(anchor, 3)
+      expect(patch!.baseline as number).toBeCloseTo(warp.params.baseline, 3)
+    }
+  })
+
+  it('기준점은 글자 밖으로 나가지 않는다', () => {
+    const warp = createWarp('arc')
+    expect(dragWarpHandle(warp, size, 'arc-anchor', { x: -500, y: 50 })!.anchor).toBe(0)
+    expect(dragWarpHandle(warp, size, 'arc-anchor', { x: 5000, y: 50 })!.anchor).toBe(1)
   })
 
   it('끈 자리로 기준점이 정확히 따라온다', () => {
     const warp = createWarp('arc')
     if (warp.type !== 'arc') throw new Error('arc')
     warp.params.angle = 150
+    warp.params.rotation = 35
 
     const target = { x: size.width * 0.7, y: size.height * 0.4 }
-    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
+    const patch = dragWarpHandle(warp, size, 'arc-anchor', target)
     const params = { ...warp.params, ...(patch as object) }
-    // 기준점은 기준선 높이에 놓이므로 그 자리에서 확인한다
-    const moved = applyWarp({ type: 'arc', params }, 0.5, params.baseline, size)
-    expect(moved.x).toBeCloseTo(target.x, 1)
-    expect(moved.y).toBeCloseTo(target.y, 1)
+    const moved = applyWarp({ type: 'arc', params }, params.anchor, params.baseline, size)
+    expect(moved.x).toBeCloseTo(target.x, 6)
+    expect(moved.y).toBeCloseTo(target.y, 6)
   })
 
-  it('반대편으로 넘어갈 때 지금 회전에 가까운 쪽을 고른다', () => {
-    const warp = createWarp('arc')
-    if (warp.type !== 'arc') throw new Error('arc')
-    warp.params.angle = 150
-    warp.params.rotation = 150
 
-    // 같은 가로 위치를 만드는 각도가 둘일 때, 멀리 튀지 않아야 한다
-    const target = applyWarp(
-      { type: 'arc', params: { ...warp.params, rotation: 160 } },
-      0.5,
-      0.5,
-      size
-    )
-    const patch = dragWarpHandle(warp, size, 'arc-baseline', target)
-    expect(Math.abs((patch!.rotation as number) - 150)).toBeLessThan(45)
-  })
+
 
   it('기준선은 글자에서 너무 멀리 벗어나지 않는다', () => {
-    const far = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 0, y: 10000 })
+    const far = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 0, y: 10000 })
     expect(far!.baseline as number).toBeLessThanOrEqual(1.5)
-    const above = dragWarpHandle(createWarp('arc'), size, 'arc-baseline', { x: 0, y: -10000 })
+    const above = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 0, y: -10000 })
     expect(above!.baseline as number).toBeGreaterThanOrEqual(-0.5)
   })
 
