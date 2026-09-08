@@ -160,7 +160,14 @@ export function CanvasStage() {
         interaction.beginMove(layerId, toCanvasPoint(event))
         return
       }
-      warpMarquee.beginWarpMarquee(toCanvasPoint(event), event.shiftKey)
+      // 글자 바깥 빈 곳을 끌지 않고 한 번 누르면 점 편집에서 빠져나온다.
+      // 글자 위를 누르면 골라 둔 점만 놓아준다 (편집은 이어간다).
+      const tapOnEmptySpace = !layerId && !event.shiftKey
+      warpMarquee.beginWarpMarquee(
+        toCanvasPoint(event),
+        event.shiftKey,
+        tapOnEmptySpace ? () => useEditorStore.getState().endWarpEditing() : undefined
+      )
       return
     }
 

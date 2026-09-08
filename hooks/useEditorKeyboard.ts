@@ -36,7 +36,8 @@ export function useEditorKeyboard() {
       }
 
       if (event.key === 'Escape') {
-        // 골라 둔 조작점 → 점 편집 → 레이어 선택 순서로 한 단계씩 빠져나온다
+        // 빈 곳 클릭과 같은 순서로, 한 단계씩 빠져나온다
+        // (골라 둔 조작점 → 점 편집 → 레이어 선택)
         if (state.selectedWarpHandles.length > 0) state.clearWarpHandleSelection()
         else if (state.editingWarpLayerId) state.endWarpEditing()
         else state.selectLayers([])

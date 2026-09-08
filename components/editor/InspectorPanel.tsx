@@ -86,13 +86,15 @@ export function InspectorPanel() {
               className="rounded border border-blue-800 px-2 py-0.5 text-blue-800"
             >
               <Text variant="caption12" as="span" color="text-blue-800">
-                나가기 (Esc)
+                나가기
               </Text>
             </button>
           </div>
           <Text variant="caption12" color="text-fg-secondary">
             어디서든 끌어 점을 감싸 고르고, Shift로 더하거나 뺍니다. 메쉬는 격자의 가로줄·세로줄을
             누르면 그 줄의 네 점이 통째로 골라집니다. 이 동안에는 레이어가 움직이지 않습니다.
+            글자 바깥 빈 곳을 한 번 누르면 점 편집에서 나가고, 글자 위를 누르면 골라 둔 점만
+            놓아줍니다.
           </Text>
         </div>
       )}
