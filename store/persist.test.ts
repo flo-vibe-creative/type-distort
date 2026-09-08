@@ -49,7 +49,14 @@ function rasterLayer(): Layer {
 }
 
 const document: EditorDocument = {
-  canvas: { width: 800, height: 600, background: '#fafafa', image: null, imageFit: 'cover' },
+  canvas: {
+    width: 800,
+    height: 600,
+    background: '#fafafa',
+    image: null,
+    imageFit: 'cover',
+    backgroundHidden: true,
+  },
   layers: [vectorLayer(), rasterLayer()],
 }
 

@@ -339,7 +339,14 @@ describe('되돌리기 / 다시하기', () => {
   it('저장본을 되살리면 되돌리기 기록은 비워진다', () => {
     store().addLayers([fakeLayer('A')])
     store().replaceDocument({
-      canvas: { width: 10, height: 10, background: null, image: null, imageFit: 'cover' },
+      canvas: {
+        width: 10,
+        height: 10,
+        background: '#ffffff',
+        image: null,
+        imageFit: 'cover',
+        backgroundHidden: false,
+      },
       layers: [],
     })
     expect(store().canUndo()).toBe(false)
@@ -457,11 +464,28 @@ describe('점 편집 상태', () => {
 })
 
 describe('캔버스 배경', () => {
-  it('배경색을 바꾸고 투명으로도 둘 수 있다', () => {
+  it('배경색을 바꾼다', () => {
     store().setCanvasBackground('#ff0000')
     expect(store().document.canvas.background).toBe('#ff0000')
-    store().setCanvasBackground(null)
-    expect(store().document.canvas.background).toBeNull()
+  })
+
+  it('투명하게 감췄다가 되돌려도 골라 둔 색과 이미지가 그대로 남는다', () => {
+    const image = {
+      bitmap: null as unknown as ImageBitmap,
+      blob: new Blob(),
+      width: 10,
+      height: 10,
+    }
+    store().setCanvasBackground('#ff0000')
+    store().setCanvasImage(image)
+
+    store().setBackgroundHidden(true)
+    expect(store().document.canvas.backgroundHidden).toBe(true)
+    expect(store().document.canvas.background).toBe('#ff0000')
+    expect(store().document.canvas.image).toBe(image)
+
+    store().setBackgroundHidden(false)
+    expect(store().document.canvas.backgroundHidden).toBe(false)
   })
 
   it('배경 이미지를 넣고 뺄 수 있다', () => {

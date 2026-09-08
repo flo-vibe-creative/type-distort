@@ -32,7 +32,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [working, setWorking] = useState(false)
 
   const visibleLayers = document.layers.filter((layer) => layer.visible)
-  const background = document.canvas.background ?? '#ffffff'
+  const background = document.canvas.background
   const rasterMixed = hasRasterLayer(document)
 
   const run = async () => {

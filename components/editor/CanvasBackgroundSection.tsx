@@ -26,6 +26,7 @@ const FIT_HINT: Record<CanvasImageFit, string> = {
 export function CanvasBackgroundSection() {
   const canvas = useEditorStore((state) => state.document.canvas)
   const setCanvasBackground = useEditorStore((state) => state.setCanvasBackground)
+  const setBackgroundHidden = useEditorStore((state) => state.setBackgroundHidden)
   const setCanvasImage = useEditorStore((state) => state.setCanvasImage)
   const setCanvasImageFit = useEditorStore((state) => state.setCanvasImageFit)
   const notify = useNoticeStore((state) => state.notify)
@@ -51,23 +52,22 @@ export function CanvasBackgroundSection() {
   return (
     <>
       <PanelSection title="배경색">
-        <ColorField
-          label="색"
-          value={canvas.background}
-          fallback="#ffffff"
-          onChange={setCanvasBackground}
-        />
+        <ColorField label="색" value={canvas.background} onChange={setCanvasBackground} />
         <label className="flex items-center justify-between">
           <Text variant="ui13" as="span" color="text-fg-secondary">
             투명하게
           </Text>
           <input
             type="checkbox"
-            checked={canvas.background === null}
-            onChange={(event) => setCanvasBackground(event.target.checked ? null : '#ffffff')}
+            checked={canvas.backgroundHidden}
+            onChange={(event) => setBackgroundHidden(event.target.checked)}
             className="h-4 w-4 accent-blue-800"
           />
         </label>
+        <Text variant="caption12" color="text-fg-tertiary">
+          켜면 배경색과 배경 이미지가 모두 감춰져 투명해집니다. 골라 둔 값은 그대로 남아 있어
+          체크를 풀면 곧바로 돌아옵니다.
+        </Text>
       </PanelSection>
 
       <PanelSection title="배경 이미지">

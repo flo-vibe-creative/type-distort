@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Text } from '@/components/ui/Text'
 import { normalizeHexColor } from '@/lib/format/color'
+import { useEditorStore } from '@/store/editorStore'
 
 interface ColorFieldProps {
   label: string
@@ -43,6 +44,9 @@ export function ColorField({ label, value, fallback = '#000000', onChange }: Col
         <input
           type="color"
           value={current}
+          /* 색을 고르는 동안 값이 계속 바뀌므로, 고르기 한 번을 되돌리기 한 단계로 묶는다 */
+          onPointerDown={() => useEditorStore.getState().beginGesture()}
+          onBlur={() => useEditorStore.getState().endGesture()}
           onChange={(event) => onChange(event.target.value)}
           aria-label={`${label} 색 고르기`}
           className="h-6 w-6 cursor-pointer rounded border border-border bg-surface p-0.5"

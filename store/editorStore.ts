@@ -18,6 +18,7 @@ export const DEFAULT_CANVAS: CanvasSettings = {
   background: '#ffffff',
   image: null,
   imageFit: 'cover',
+  backgroundHidden: false,
 }
 
 /** 새 레이어가 앞의 것과 정확히 겹쳐 보이지 않도록 어긋나게 두는 간격 */
@@ -82,7 +83,8 @@ interface EditorState {
   updateWarpParams: (id: string, patch: Record<string, unknown>) => void
   setLetterSpacing: (id: string, spacing: number) => void
   setCanvasSize: (width: number, height: number) => void
-  setCanvasBackground: (background: string | null) => void
+  setCanvasBackground: (background: string) => void
+  setBackgroundHidden: (hidden: boolean) => void
   setCanvasImage: (image: CanvasImage | null) => void
   setCanvasImageFit: (fit: CanvasImageFit) => void
   setLayerFill: (id: string, fill: string | null) => void
@@ -316,6 +318,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       withHistory(state, {
         ...state.document,
         canvas: { ...state.document.canvas, background },
+      })
+    ),
+
+  setBackgroundHidden: (backgroundHidden) =>
+    set((state) =>
+      withHistory(state, {
+        ...state.document,
+        canvas: { ...state.document.canvas, backgroundHidden },
       })
     ),
 

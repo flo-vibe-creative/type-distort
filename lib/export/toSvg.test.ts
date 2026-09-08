@@ -29,8 +29,18 @@ function vectorLayer(overrides: Partial<Layer> = {}): Layer {
   }
 }
 
-function doc(layers: Layer[], background: string | null = '#ffffff'): EditorDocument {
-  return { canvas: { width: 400, height: 300, background, image: null, imageFit: 'cover' }, layers }
+function doc(layers: Layer[], backgroundHidden = false): EditorDocument {
+  return {
+    canvas: {
+      width: 400,
+      height: 300,
+      background: '#ffffff',
+      image: null,
+      imageFit: 'cover',
+      backgroundHidden,
+    },
+    layers,
+  }
 }
 
 describe('documentToSvgMarkup', () => {
@@ -45,9 +55,14 @@ describe('documentToSvgMarkup', () => {
     expect(documentToSvgMarkup(doc([vectorLayer()]), {})).toContain('fill="#ffffff"')
   })
 
-  it('배경이 없으면 배경 사각형을 넣지 않아 투명하게 남는다', () => {
-    const markup = documentToSvgMarkup(doc([vectorLayer()], null), {})
+  it('배경을 감춰 두면 배경 사각형을 넣지 않아 투명하게 남는다', () => {
+    const markup = documentToSvgMarkup(doc([vectorLayer()], true), {})
     expect(markup).not.toContain('<rect')
+  })
+
+  it('배경을 감춰 두면 배경 이미지도 넣지 않는다', () => {
+    const markup = documentToSvgMarkup(doc([vectorLayer()], true), {}, 'data:image/png;base64,BBB')
+    expect(markup).not.toContain('<image')
   })
 
   it('벡터 레이어를 실제 경로로 적고 배치를 함께 담는다', () => {

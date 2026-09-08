@@ -60,13 +60,13 @@ export function documentToSvgMarkup(
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">`
   )
 
-  if (canvas.background) {
+  if (!canvas.backgroundHidden) {
     parts.push(
       `<rect width="${canvas.width}" height="${canvas.height}" fill="${escapeAttribute(canvas.background)}"/>`
     )
   }
 
-  if (backgroundImageHref) {
+  if (backgroundImageHref && !canvas.backgroundHidden) {
     const href = escapeAttribute(backgroundImageHref)
     parts.push(
       `<image href="${href}" xlink:href="${href}" x="0" y="0" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="${FIT_TO_ASPECT[canvas.imageFit]}"/>`

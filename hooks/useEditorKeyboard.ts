@@ -27,9 +27,12 @@ export function useEditorKeyboard() {
       const state = useEditorStore.getState()
       const ids = state.selectedLayerIds
 
-      // Cmd/Ctrl + Z 되돌리기, Shift를 더하면 다시하기
+      // Cmd/Ctrl + Z 되돌리기, Shift를 더하면 다시하기.
+      // 키를 누르고 있으면 브라우저가 같은 이벤트를 계속 보내 여러 단계가 한꺼번에
+      // 되돌아가므로, 자동으로 반복된 것은 무시해 한 번 누름이 한 단계가 되게 한다.
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
+        if (event.repeat) return
         if (event.shiftKey) state.redo()
         else state.undo()
         return

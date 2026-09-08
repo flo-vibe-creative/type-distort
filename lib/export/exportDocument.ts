@@ -1,4 +1,4 @@
-import type { EditorDocument } from '@/lib/document/types'
+import type { CanvasSettings, EditorDocument } from '@/lib/document/types'
 import { renderWarpedBitmap } from '@/lib/raster/glRenderer'
 import { warpedBounds } from '@/lib/render/layerBounds'
 import { documentToSvgMarkup, type BakedRasterMap } from '@/lib/export/toSvg'
@@ -26,6 +26,22 @@ export interface ExportResult {
 const EXPORT_GRID = 96
 /** 구운 그림이 지나치게 커지지 않도록 두는 배율 상한 */
 const MAX_BAKE_SCALE = 4
+
+/**
+ * 형식과 옵션에 맞춰 배경을 정한다.
+ *
+ * JPEG는 투명을 담을 수 없으므로 반드시 무언가를 깔아야 하고,
+ * PNG는 투명 배경을 고르면 색과 이미지를 모두 뺀다.
+ */
+function exportCanvas(canvas: CanvasSettings, options: ExportOptions): CanvasSettings {
+  if (options.format === 'jpeg') {
+    if (!canvas.backgroundHidden) return canvas
+    // 배경을 감춰 둔 상태였다면 대신 고른 색으로 채운다
+    return { ...canvas, backgroundHidden: false, background: options.background, image: null }
+  }
+  if (options.transparent) return { ...canvas, backgroundHidden: true }
+  return canvas
+}
 
 function baseFileName(document: EditorDocument): string {
   const first = document.layers.find((layer) => layer.visible)
@@ -109,13 +125,7 @@ export async function exportDocument(
   document: EditorDocument,
   options: ExportOptions
 ): Promise<ExportResult> {
-  // JPEG는 투명을 담을 수 없으므로 항상 배경을 깐다
-  const opaque = options.format === 'jpeg' || !options.transparent
-  const canvasSettings = {
-    ...document.canvas,
-    background: opaque ? options.background : null,
-  }
-  const prepared: EditorDocument = { ...document, canvas: canvasSettings }
+  const prepared: EditorDocument = { ...document, canvas: exportCanvas(document.canvas, options) }
 
   const scale = options.format === 'svg' ? 1 : options.scale
   const backgroundHref = prepared.canvas.image

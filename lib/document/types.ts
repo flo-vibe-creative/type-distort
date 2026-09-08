@@ -68,11 +68,16 @@ export interface CanvasImage {
 export interface CanvasSettings {
   width: number
   height: number
-  /** 배경색. null이면 색 없이 투명하다. */
-  background: string | null
+  /** 골라 둔 배경색 */
+  background: string
   /** 배경 이미지. 색 위에 덮인다. */
   image: CanvasImage | null
   imageFit: CanvasImageFit
+  /**
+   * 배경을 잠시 감춘다. 켜면 색과 이미지가 모두 보이지 않아 투명해지지만,
+   * 골라 둔 값은 그대로 남아 있어 끄면 곧바로 되돌아온다.
+   */
+  backgroundHidden: boolean
 }
 
 export interface EditorDocument {

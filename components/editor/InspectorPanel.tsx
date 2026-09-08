@@ -122,36 +122,6 @@ export function InspectorPanel() {
             />
           </PanelSection>
 
-          <PanelSection title="크기">
-            <NumberField
-              label="가로"
-              suffix="%"
-              value={layer.transform.scaleX * 100}
-              onChange={(percent) => updateTransform(layer.id, { scaleX: percent / 100 })}
-            />
-            <NumberField
-              label="세로"
-              suffix="%"
-              value={layer.transform.scaleY * 100}
-              onChange={(percent) => updateTransform(layer.id, { scaleY: percent / 100 })}
-            />
-            <NumberField
-              label="회전"
-              suffix="°"
-              value={layer.transform.rotation}
-              onChange={(rotation) => updateTransform(layer.id, { rotation })}
-            />
-            <button
-              type="button"
-              onClick={() => updateTransform(layer.id, { scaleX: 1, scaleY: 1, rotation: 0 })}
-              className="mt-1 rounded-md border border-border py-1.5 hover:bg-surface-minimal"
-            >
-              <Text variant="caption12" as="span" color="text-fg-secondary">
-                크기·회전 초기화
-              </Text>
-            </button>
-          </PanelSection>
-
           <PanelSection title="색">
             {layer.source.kind === 'vector' ? (
               <>

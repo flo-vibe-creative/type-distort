@@ -239,12 +239,12 @@ export function CanvasStage() {
         style={{
           width: `${document.canvas.width}px`,
           height: `${document.canvas.height}px`,
-          background: document.canvas.background ?? 'transparent',
+          background: document.canvas.backgroundHidden ? 'transparent' : document.canvas.background,
           transformOrigin: '0 0',
           transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
         }}
       >
-        {backgroundImageUrl && (
+        {backgroundImageUrl && !document.canvas.backgroundHidden && (
           <div
             className="pointer-events-none absolute inset-0"
             style={{

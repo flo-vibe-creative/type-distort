@@ -38,8 +38,9 @@ interface StoredLayer {
 interface StoredCanvas {
   width: number
   height: number
-  background: string | null
+  background: string
   imageFit?: CanvasImageFit
+  backgroundHidden?: boolean
   image?: { width: number; height: number; key: string } | null
 }
 
@@ -61,6 +62,7 @@ export function serializeDocument(document: EditorDocument): StoredDocument {
       height: document.canvas.height,
       background: document.canvas.background,
       imageFit: document.canvas.imageFit,
+      backgroundHidden: document.canvas.backgroundHidden,
       image: document.canvas.image
         ? {
             width: document.canvas.image.width,
@@ -162,8 +164,9 @@ export function deserializeDocument(
   const canvas: CanvasSettings = {
     width: stored.canvas.width,
     height: stored.canvas.height,
-    background: stored.canvas.background ?? null,
+    background: stored.canvas.background ?? '#ffffff',
     imageFit: stored.canvas.imageFit ?? 'cover',
+    backgroundHidden: stored.canvas.backgroundHidden === true,
     image:
       storedImage && restoredImage
         ? {
