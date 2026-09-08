@@ -139,10 +139,6 @@ export function CanvasBackgroundSection() {
           className="h-4 w-4 accent-blue-800"
         />
       </Row>
-      <Text variant="caption12" color="text-fg-tertiary">
-        켜면 배경색과 배경 이미지가 모두 감춰져 투명해집니다. 골라 둔 값은 그대로 남아 있어
-        체크를 풀면 곧바로 돌아옵니다.
-      </Text>
 
       <input
         ref={inputRef}
