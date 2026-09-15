@@ -347,21 +347,25 @@ export function CanvasStage() {
               selectedHandleIds={selectedWarpHandles}
               onHandleDown={(handleId, event) => {
                 event.stopPropagation()
-                warpInteraction.beginWarpDrag(singleSelected.id, handleId, event.shiftKey)
+                warpInteraction.beginWarpDrag(
+                  singleSelected.id,
+                  handleId,
+                  event.shiftKey,
+                  toCanvasPoint(event)
+                )
               }}
               onMeshLineDown={(line: MeshLine, event) => {
                 event.stopPropagation()
                 const ids =
-                  line.kind === 'row' ? meshRowHandleIds(line.index) : meshColumnHandleIds(line.index)
+                  line.kind === 'row'
+                    ? meshRowHandleIds(line.index)
+                    : meshColumnHandleIds(line.index)
                 const additive = event.shiftKey
                 // 줄을 눌렀다가 그대로 끌면 영역 선택, 그냥 놓으면 그 줄이 통째로 골라진다
                 warpMarquee.beginWarpMarquee(toCanvasPoint(event), additive, () => {
                   const state = useEditorStore.getState()
                   const base = additive ? state.selectedWarpHandles : []
-                  state.setWarpHandleSelection([
-                    ...base,
-                    ...ids.filter((id) => !base.includes(id)),
-                  ])
+                  state.setWarpHandleSelection([...base, ...ids.filter((id) => !base.includes(id))])
                 })
               }}
             />

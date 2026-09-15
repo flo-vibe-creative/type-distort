@@ -58,7 +58,13 @@ describe('warpBulge', () => {
   })
 
   describe('중앙점을 원 중심에서 비껴 둘 때', () => {
-    const shifted = { ...BULGE_DEFAULT, strength: 0.6, radius: 0.5, peakX: 0.15, peakY: 0 }
+    const shifted = {
+      ...BULGE_DEFAULT,
+      strength: 0.6,
+      radius: 0.5,
+      peakX: 0.15,
+      peakY: 0,
+    }
     const radiusPx = 0.5 * (Math.hypot(ctx.width, ctx.height) / 2)
 
     it('중앙점 자리는 움직이지 않는다', () => {
@@ -104,7 +110,10 @@ describe('warpBulge', () => {
 
     it('반경을 줄여도 중앙점은 원 안에 머문다', () => {
       const geometry = bulgeGeometry({ ...shifted, radius: 0.1, peakX: 0.4 }, ctx)
-      const offset = Math.hypot(geometry.peak.x - geometry.center.x, geometry.peak.y - geometry.center.y)
+      const offset = Math.hypot(
+        geometry.peak.x - geometry.center.x,
+        geometry.peak.y - geometry.center.y
+      )
       expect(offset).toBeLessThanOrEqual(geometry.radius * MAX_PEAK_RATIO + 1e-9)
     })
   })

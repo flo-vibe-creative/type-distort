@@ -16,8 +16,10 @@ import { useEditorStore } from '@/store/editorStore'
 const WARP_GUIDE: Record<WarpType, string> = {
   arc: '양 끝의 흰 점을 위아래로 끌면 휘는 정도가 바뀝니다. 보라색 기준점은 곡선 위 어디로든 옮길 수 있으며, 그 지점은 휘어도 제자리에 남고 나머지 글자가 그 둘레로 감깁니다. 위아래로 끌면 글자가 곡선의 어디에 올라앉을지(기준선)가 바뀌어, 아래로 내리면 곡선 위에 서고 위로 올리면 매달립니다. 원 전체를 돌리려면 회전 슬라이더를 쓰세요.',
   mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. 여러 개를 한꺼번에 다루려면 레이어를 더블클릭해 점 편집으로 들어가세요. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
-  perspective: '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
-  bulge: '가운데 점을 끌면 점선 원과 함께 옮겨지고, 오른쪽 점을 끌어 영향 범위를 정합니다. \'중앙점만 움직이기\'를 켜면 점선 원은 제자리에 둔 채 가장 크게 부푸는 지점만 옮겨 한쪽으로 쏠린 볼록을 만들 수 있습니다. 세기를 음수로 하면 오목해집니다.',
+  perspective:
+    '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
+  bulge:
+    '가운데 점을 끌면 점선 원은 제자리에 둔 채 가장 크게 부푸는 지점만 옮겨집니다. 원 전체를 옮기려면 점선 원을 잡아 끄세요. 오른쪽 점으로 영향 범위를, 세기를 음수로 하면 오목해집니다.',
 }
 
 function EmptyMessage({ children }: { children: React.ReactNode }) {
@@ -41,8 +43,6 @@ export function InspectorPanel() {
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
   const endWarpEditing = useEditorStore((state) => state.endWarpEditing)
-  const bulgePeakOnly = useEditorStore((state) => state.bulgePeakOnly)
-  const setBulgePeakOnly = useEditorStore((state) => state.setBulgePeakOnly)
 
   const selected = layers.filter((layer) => selectedLayerIds.includes(layer.id))
   const layer = selected.length === 1 ? selected[0] : null
@@ -92,9 +92,8 @@ export function InspectorPanel() {
           </div>
           <Text variant="caption12" color="text-fg-secondary">
             어디서든 끌어 점을 감싸 고르고, Shift로 더하거나 뺍니다. 메쉬는 격자의 가로줄·세로줄을
-            누르면 그 줄의 네 점이 통째로 골라집니다. 이 동안에는 레이어가 움직이지 않습니다.
-            글자 바깥 빈 곳을 한 번 누르면 점 편집에서 나가고, 글자 위를 누르면 골라 둔 점만
-            놓아줍니다.
+            누르면 그 줄의 네 점이 통째로 골라집니다. 이 동안에는 레이어가 움직이지 않습니다. 글자
+            바깥 빈 곳을 한 번 누르면 점 편집에서 나가고, 글자 위를 누르면 골라 둔 점만 놓아줍니다.
           </Text>
         </div>
       )}
@@ -183,37 +182,25 @@ export function InspectorPanel() {
                 step={slider.step}
                 suffix={slider.unit}
                 displayScale={slider.displayScale}
-                value={Number((layer.warp.params as unknown as Record<string, number>)[slider.key] ?? 0)}
+                value={Number(
+                  (layer.warp.params as unknown as Record<string, number>)[slider.key] ?? 0
+                )}
                 onChange={(value) => updateWarpParams(layer.id, { [slider.key]: value })}
               />
             ))}
 
-            {layer.warp.type === 'bulge' && (
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={bulgePeakOnly}
-                    onChange={(event) => setBulgePeakOnly(event.target.checked)}
-                    className="h-4 w-4 accent-blue-800"
-                  />
-                  <Text variant="ui13" as="span" color="text-fg-secondary">
-                    중앙점만 움직이기
+            {layer.warp.type === 'bulge' &&
+              (layer.warp.params.peakX !== 0 || layer.warp.params.peakY !== 0) && (
+                <button
+                  type="button"
+                  onClick={() => updateWarpParams(layer.id, { peakX: 0, peakY: 0 })}
+                  className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
+                >
+                  <Text variant="caption12" as="span" color="text-fg-secondary">
+                    중앙점을 원 중심으로
                   </Text>
-                </label>
-                {(layer.warp.params.peakX !== 0 || layer.warp.params.peakY !== 0) && (
-                  <button
-                    type="button"
-                    onClick={() => updateWarpParams(layer.id, { peakX: 0, peakY: 0 })}
-                    className="rounded border border-border px-2 py-1 hover:bg-surface-minimal"
-                  >
-                    <Text variant="caption12" as="span" color="text-fg-secondary">
-                      원 중심으로
-                    </Text>
-                  </button>
-                )}
-              </div>
-            )}
+                </button>
+              )}
 
             <Text variant="caption12" color="text-fg-tertiary">
               {WARP_GUIDE[layer.warp.type]}
@@ -234,9 +221,8 @@ export function InspectorPanel() {
                   onChange={(value) => setLetterSpacing(layer.id, value)}
                 />
                 <Text variant="caption12" color="text-fg-tertiary">
-                  {glyphCountOf(layer.source.shapes)}개의 글자로 나뉘었습니다. 숫자가 실제와
-                  다르면 글자끼리 겹쳐 있는 것이니, 디자인 툴에서 자간을 조금 벌려 다시 내보내
-                  주세요.
+                  {glyphCountOf(layer.source.shapes)}개의 글자로 나뉘었습니다. 숫자가 실제와 다르면
+                  글자끼리 겹쳐 있는 것이니, 디자인 툴에서 자간을 조금 벌려 다시 내보내 주세요.
                 </Text>
               </>
             ) : (

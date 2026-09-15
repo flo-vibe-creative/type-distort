@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { canvasToLocal } from '@/lib/render/layerFrame'
 import { warpDomainSize } from '@/lib/render/layerSource'
-import { dragWarpHandles, supportsMultiSelect } from '@/lib/warp/handles'
+import { dragWarpHandles, supportsMultiSelect, warpHandlePosition } from '@/lib/warp/handles'
 import type { Point } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
 
@@ -12,6 +12,8 @@ interface WarpDrag {
   handleId: string
   /** 함께 움직일 조작점들 */
   selection: string[]
+  /** 잡은 자리와 조작점 사이 간격 (레이어 좌표) — 잡는 순간 조작점이 포인터로 튀지 않게 한다 */
+  grabOffset: Point
 }
 
 /**
@@ -24,32 +26,46 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
   const [active, setActive] = useState(false)
   const dragRef = useRef<WarpDrag | null>(null)
 
-  const beginWarpDrag = useCallback((layerId: string, handleId: string, additive: boolean) => {
-    const state = useEditorStore.getState()
-    const layer = state.document.layers.find((item) => item.id === layerId)
-    if (!layer) return
+  const beginWarpDrag = useCallback(
+    (layerId: string, handleId: string, additive: boolean, pointer?: Point) => {
+      const state = useEditorStore.getState()
+      const layer = state.document.layers.find((item) => item.id === layerId)
+      if (!layer) return
 
-    const multiSelectable = supportsMultiSelect(layer.warp.type)
-    const current = multiSelectable ? state.selectedWarpHandles : []
-    let selection: string[]
+      const multiSelectable = supportsMultiSelect(layer.warp.type)
+      const current = multiSelectable ? state.selectedWarpHandles : []
+      let selection: string[]
 
-    if (additive && multiSelectable) {
-      if (current.includes(handleId)) {
-        // 이미 골라 둔 점을 Shift로 다시 누르면 선택에서 뺀다 (끌지는 않는다)
-        state.setWarpHandleSelection(current.filter((id) => id !== handleId))
-        return
+      if (additive && multiSelectable) {
+        if (current.includes(handleId)) {
+          // 이미 골라 둔 점을 Shift로 다시 누르면 선택에서 뺀다 (끌지는 않는다)
+          state.setWarpHandleSelection(current.filter((id) => id !== handleId))
+          return
+        }
+        selection = [...current, handleId]
+      } else {
+        // 이미 여러 개를 골라 둔 상태에서 그중 하나를 누르면 선택을 유지한 채 함께 끈다
+        selection = current.includes(handleId) ? current : [handleId]
       }
-      selection = [...current, handleId]
-    } else {
-      // 이미 여러 개를 골라 둔 상태에서 그중 하나를 누르면 선택을 유지한 채 함께 끈다
-      selection = current.includes(handleId) ? current : [handleId]
-    }
 
-    state.setWarpHandleSelection(selection)
-    state.beginGesture()
-    dragRef.current = { layerId, handleId, selection }
-    setActive(true)
-  }, [])
+      state.setWarpHandleSelection(selection)
+      state.beginGesture()
+
+      let grabOffset = { x: 0, y: 0 }
+      const handlePosition = warpHandlePosition(layer.warp, warpDomainSize(layer), handleId)
+      if (pointer && handlePosition) {
+        const grabbed = canvasToLocal(layer.transform, pointer)
+        grabOffset = {
+          x: handlePosition.x - grabbed.x,
+          y: handlePosition.y - grabbed.y,
+        }
+      }
+
+      dragRef.current = { layerId, handleId, selection, grabOffset }
+      setActive(true)
+    },
+    []
+  )
 
   useEffect(() => {
     if (!active) return
@@ -62,14 +78,17 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
       const layer = state.document.layers.find((item) => item.id === drag.layerId)
       if (!layer) return
 
-      const local = canvasToLocal(layer.transform, toCanvasPoint(event))
+      const pointer = canvasToLocal(layer.transform, toCanvasPoint(event))
+      const local = {
+        x: pointer.x + drag.grabOffset.x,
+        y: pointer.y + drag.grabOffset.y,
+      }
       const patch = dragWarpHandles(
         layer.warp,
         warpDomainSize(layer),
         drag.handleId,
         drag.selection,
-        local,
-        { bulgePeakOnly: state.bulgePeakOnly }
+        local
       )
       if (patch) state.updateWarpParams(drag.layerId, patch)
     }

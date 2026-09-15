@@ -45,7 +45,10 @@ describe('아크 핸들', () => {
   })
 
   it('각도가 없을 때는 끈 자리를 그대로 읽는다', () => {
-    const patch = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 40, y: 80 })
+    const patch = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', {
+      x: 40,
+      y: 80,
+    })
     expect(patch).toEqual({ anchor: 0.2, baseline: 0.8 })
   })
 
@@ -87,13 +90,16 @@ describe('아크 핸들', () => {
     expect(moved.y).toBeCloseTo(target.y, 6)
   })
 
-
-
-
   it('기준선은 글자에서 너무 멀리 벗어나지 않는다', () => {
-    const far = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 0, y: 10000 })
+    const far = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', {
+      x: 0,
+      y: 10000,
+    })
     expect(far!.baseline as number).toBeLessThanOrEqual(1.5)
-    const above = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', { x: 0, y: -10000 })
+    const above = dragWarpHandle(createWarp('arc'), size, 'arc-anchor', {
+      x: 0,
+      y: -10000,
+    })
     expect(above!.baseline as number).toBeGreaterThanOrEqual(-0.5)
   })
 
@@ -148,16 +154,24 @@ describe('볼록 핸들', () => {
     expect(handles.map((h) => h.id)).toEqual(['bulge-center', 'bulge-radius'])
   })
 
-  it('중심점을 끌면 중심이 그 자리로 간다', () => {
-    const patch = dragWarpHandle(createWarp('bulge'), size, 'bulge-center', { x: 50, y: 25 })
-    expect(patch).toEqual({ cx: 0.25, cy: 0.25 })
+  it('중앙점을 끌면 원은 두고 중앙점만 옮겨진다', () => {
+    const patch = dragWarpHandle(createWarp('bulge'), size, 'bulge-center', {
+      x: 120,
+      y: 60,
+    })
+    expect(patch!.cx).toBeUndefined()
+    expect(patch!.peakX as number).toBeCloseTo(0.1, 6)
+    expect(patch!.peakY as number).toBeCloseTo(0.1, 6)
   })
 
   it('반경 핸들을 끌면 거리에 맞춰 반경이 바뀐다', () => {
     const warp = createWarp('bulge')
     const half = Math.hypot(size.width, size.height) / 2
     const center = { x: size.width / 2, y: size.height / 2 }
-    const patch = dragWarpHandle(warp, size, 'bulge-radius', { x: center.x + half, y: center.y })
+    const patch = dragWarpHandle(warp, size, 'bulge-radius', {
+      x: center.x + half,
+      y: center.y,
+    })
     expect(patch!.radius as number).toBeCloseTo(1, 6)
   })
 
@@ -167,25 +181,17 @@ describe('볼록 핸들', () => {
     expect(patch!.radius as number).toBeGreaterThan(0)
   })
 
-  it('중앙점만 움직이기를 켜면 원은 두고 중앙점만 옮긴다', () => {
-    const patch = dragWarpHandle(createWarp('bulge'), size, 'bulge-center', { x: 120, y: 60 }, {
-      bulgePeakOnly: true,
-    })
-    expect(patch!.cx).toBeUndefined()
-    expect(patch!.peakX as number).toBeCloseTo(0.1, 6)
-    expect(patch!.peakY as number).toBeCloseTo(0.1, 6)
-  })
-
   it('중앙점을 원 밖으로 끌어도 원 안쪽에 멈춘다', () => {
     const warp = createWarp('bulge')
-    const patch = dragWarpHandle(warp, size, 'bulge-center', { x: 1000, y: 50 }, {
-      bulgePeakOnly: true,
+    const patch = dragWarpHandle(warp, size, 'bulge-center', {
+      x: 1000,
+      y: 50,
     })
     const radius = 0.6 * (Math.hypot(size.width, size.height) / 2)
     expect((patch!.peakX as number) * size.width).toBeCloseTo(radius * 0.9, 6)
   })
 
-  it('중앙점이 비껴 있으면 원 중심 표시가 따로 생기고, 그것을 끌면 둘이 함께 움직인다', () => {
+  it('중앙점이 비껴 있으면 원 중심 표시가 따로 생기고, 원을 끌면 둘이 함께 움직인다', () => {
     const warp = createWarp('bulge')
     if (warp.type !== 'bulge') throw new Error('bulge')
     warp.params.peakX = 0.1
@@ -195,11 +201,6 @@ describe('볼록 핸들', () => {
 
     const byArea = dragWarpHandle(warp, size, 'bulge-area', { x: 110, y: 60 })
     expect(byArea).toEqual({ cx: 0.55, cy: 0.6 })
-
-    // 끄기 옵션이 꺼져 있으면 중앙점을 끌어도 원과 함께 옮겨, 중앙점이 포인터를 따라간다
-    const byPeak = dragWarpHandle(warp, size, 'bulge-center', { x: 130, y: 50 })
-    expect(byPeak!.cx as number).toBeCloseTo(0.55, 6)
-    expect(byPeak!.cy as number).toBeCloseTo(0.5, 6)
   })
 })
 
@@ -213,7 +214,10 @@ describe('퍼스펙티브 핸들', () => {
 
   it('모서리를 끌면 그 모서리만 움직인다', () => {
     const warp = createWarp('perspective')
-    const patch = dragWarpHandle(warp, size, 'perspective-1', { x: 150, y: 20 })
+    const patch = dragWarpHandle(warp, size, 'perspective-1', {
+      x: 150,
+      y: 20,
+    })
     const corners = patch!.corners as { x: number; y: number }[]
     expect(corners[1]).toEqual({ x: 0.75, y: 0.2 })
     expect(corners[0]).toEqual({ x: 0, y: 0 })
@@ -245,7 +249,10 @@ describe('잘못된 입력', () => {
 
   it('크기가 0이면 아무것도 바꾸지 않는다', () => {
     expect(
-      dragWarpHandle(createWarp('mesh'), { width: 0, height: 0 }, 'mesh-5', { x: 1, y: 1 })
+      dragWarpHandle(createWarp('mesh'), { width: 0, height: 0 }, 'mesh-5', {
+        x: 1,
+        y: 1,
+      })
     ).toBeNull()
   })
 })
@@ -260,7 +267,10 @@ describe('여러 점 함께 옮기기', () => {
 
   it('고른 점이 하나뿐이면 평소와 똑같이 움직인다', () => {
     const warp = createWarp('mesh')
-    const patch = dragWarpHandles(warp, size, 'mesh-5', ['mesh-5'], { x: 60, y: 10 })
+    const patch = dragWarpHandles(warp, size, 'mesh-5', ['mesh-5'], {
+      x: 60,
+      y: 10,
+    })
     const points = patch!.points as { x: number; y: number }[]
     expect(points[5]).toEqual({ x: 0.3, y: 0.1 })
     expect(points[6]).toEqual({ x: 2 / 3, y: 1 / 3 })
@@ -272,7 +282,10 @@ describe('여러 점 함께 옮기기', () => {
     const before = warp.params.points.map((p) => ({ ...p }))
 
     // 5번 점을 오른쪽으로 0.1(=20px), 아래로 0.2(=20px) 옮긴다
-    const target = { x: (before[5].x + 0.1) * size.width, y: (before[5].y + 0.2) * size.height }
+    const target = {
+      x: (before[5].x + 0.1) * size.width,
+      y: (before[5].y + 0.2) * size.height,
+    }
     const patch = dragWarpHandles(warp, size, 'mesh-5', ['mesh-5', 'mesh-6', 'mesh-9'], target)
     const points = patch!.points as { x: number; y: number }[]
 
@@ -290,7 +303,13 @@ describe('여러 점 함께 옮기기', () => {
     const before = warp.params.corners.map((p) => ({ ...p }))
     const target = { x: 0.2 * size.width, y: 0.1 * size.height }
 
-    const patch = dragWarpHandles(warp, size, 'perspective-0', ['perspective-0', 'perspective-1'], target)
+    const patch = dragWarpHandles(
+      warp,
+      size,
+      'perspective-0',
+      ['perspective-0', 'perspective-1'],
+      target
+    )
     const corners = patch!.corners as { x: number; y: number }[]
     expect(corners[0]).toEqual({ x: 0.2, y: 0.1 })
     expect(corners[1].x).toBeCloseTo(before[1].x + 0.2, 6)
@@ -299,7 +318,7 @@ describe('여러 점 함께 옮기기', () => {
 
   it('여러 점을 묶을 수 없는 효과는 기준 점만 움직인다', () => {
     const warp = createWarp('bulge')
-    const patch = dragWarpHandles(warp, size, 'bulge-center', ['bulge-center', 'bulge-radius'], {
+    const patch = dragWarpHandles(warp, size, 'bulge-area', ['bulge-area', 'bulge-radius'], {
       x: 50,
       y: 25,
     })
@@ -308,6 +327,11 @@ describe('여러 점 함께 옮기기', () => {
 
   it('다룰 수 없는 핸들이면 아무것도 바꾸지 않는다', () => {
     const warp = createWarp('mesh')
-    expect(dragWarpHandles(warp, size, 'mesh-99', ['mesh-99', 'mesh-1'], { x: 0, y: 0 })).toBeNull()
+    expect(
+      dragWarpHandles(warp, size, 'mesh-99', ['mesh-99', 'mesh-1'], {
+        x: 0,
+        y: 0,
+      })
+    ).toBeNull()
   })
 })

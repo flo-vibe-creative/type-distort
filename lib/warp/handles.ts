@@ -13,22 +13,28 @@ export interface WarpHandle {
   role: 'point' | 'radius' | 'anchor' | 'center'
 }
 
-/** 조작점을 끌 때 함께 넘기는 선택 사항 */
-export interface WarpDragOptions {
-  /** 볼록/웨이브에서 점선 원은 두고 가장 부푸는 중앙점만 옮긴다 */
-  bulgePeakOnly?: boolean
-}
-
 /** 현재 왜곡 상태에서 조작점들이 놓일 자리 */
 export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
   switch (warp.type) {
     case 'arc': {
       const { baseline, anchor } = warp.params
       return [
-        { id: 'arc-start', local: applyWarp(warp, 0, baseline, size), role: 'point' },
+        {
+          id: 'arc-start',
+          local: applyWarp(warp, 0, baseline, size),
+          role: 'point',
+        },
         // 기준점은 곡선 위 어디에나 놓일 수 있다
-        { id: 'arc-anchor', local: applyWarp(warp, anchor, baseline, size), role: 'anchor' },
-        { id: 'arc-end', local: applyWarp(warp, 1, baseline, size), role: 'point' },
+        {
+          id: 'arc-anchor',
+          local: applyWarp(warp, anchor, baseline, size),
+          role: 'anchor',
+        },
+        {
+          id: 'arc-end',
+          local: applyWarp(warp, 1, baseline, size),
+          role: 'point',
+        },
       ]
     }
 
@@ -41,7 +47,11 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
       }
       handles.push(
         { id: 'bulge-center', local: peak, role: 'point' },
-        { id: 'bulge-radius', local: { x: center.x + radius, y: center.y }, role: 'radius' }
+        {
+          id: 'bulge-radius',
+          local: { x: center.x + radius, y: center.y },
+          role: 'radius',
+        }
       )
       return handles
     }
@@ -60,6 +70,21 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
         role: 'point',
       }))
   }
+}
+
+/**
+ * 조작점이 지금 놓인 자리. 끌기 시작할 때 포인터와의 간격을 재어 두는 데 쓴다.
+ * 볼록의 원(bulge-area)은 핸들 목록에 없을 때도 원 중심을 돌려준다.
+ */
+export function warpHandlePosition(
+  warp: WarpState,
+  size: WarpContext,
+  handleId: string
+): Point | null {
+  if (warp.type === 'bulge' && handleId === 'bulge-area') {
+    return bulgeGeometry(warp.params, size).center
+  }
+  return warpHandles(warp, size).find((handle) => handle.id === handleId)?.local ?? null
 }
 
 /** 아크 각도를 찾을 때 훑어보는 범위와 간격 (도) */
@@ -85,8 +110,7 @@ export function dragWarpHandle(
   warp: WarpState,
   size: WarpContext,
   handleId: string,
-  localPoint: Point,
-  options: WarpDragOptions = {}
+  localPoint: Point
 ): Record<string, unknown> | null {
   if (size.width <= 0 || size.height <= 0) return null
 
@@ -101,8 +125,8 @@ export function dragWarpHandle(
     }
 
     case 'bulge': {
-      const { center, radius, peak } = bulgeGeometry(warp.params, size)
-      if (handleId === 'bulge-center' && options.bulgePeakOnly) {
+      const { center, radius } = bulgeGeometry(warp.params, size)
+      if (handleId === 'bulge-center') {
         // 점선 원은 그대로 두고 중앙점만 원 안에서 옮긴다
         const next = clampPeak(center, radius, localPoint.x - center.x, localPoint.y - center.y)
         return {
@@ -110,12 +134,12 @@ export function dragWarpHandle(
           peakY: (next.y - center.y) / size.height,
         }
       }
-      if (handleId === 'bulge-center' || handleId === 'bulge-area') {
-        // 원과 중앙점을 함께 옮긴다. 끈 점이 포인터를 따라가도록 원 중심을 되짚는다.
-        const grabbed = handleId === 'bulge-center' ? peak : center
-        const x = center.x + (localPoint.x - grabbed.x)
-        const y = center.y + (localPoint.y - grabbed.y)
-        return { cx: x / size.width, cy: y / size.height }
+      if (handleId === 'bulge-area') {
+        // 원 중심 표시를 끌면 원과 중앙점이 함께 옮겨진다
+        return {
+          cx: localPoint.x / size.width,
+          cy: localPoint.y / size.height,
+        }
       }
       if (handleId === 'bulge-radius') {
         const halfDiagonal = Math.hypot(size.width, size.height) / 2
@@ -129,7 +153,10 @@ export function dragWarpHandle(
       const index = indexFrom(handleId, 'perspective-', warp.params.corners.length)
       if (index === null) return null
       const corners = warp.params.corners.map((corner) => ({ ...corner }))
-      corners[index] = { x: localPoint.x / size.width, y: localPoint.y / size.height }
+      corners[index] = {
+        x: localPoint.x / size.width,
+        y: localPoint.y / size.height,
+      }
       return { corners }
     }
 
@@ -137,7 +164,10 @@ export function dragWarpHandle(
       const index = indexFrom(handleId, 'mesh-', MESH_SIZE * MESH_SIZE)
       if (index === null) return null
       const points = warp.params.points.map((point) => ({ ...point }))
-      points[index] = { x: localPoint.x / size.width, y: localPoint.y / size.height }
+      points[index] = {
+        x: localPoint.x / size.width,
+        y: localPoint.y / size.height,
+      }
       return { points }
     }
   }
@@ -208,17 +238,23 @@ export function dragWarpHandles(
   size: WarpContext,
   primaryHandleId: string,
   selectedHandleIds: readonly string[],
-  localPoint: Point,
-  options: WarpDragOptions = {}
+  localPoint: Point
 ): Record<string, unknown> | null {
-  const patch = dragWarpHandle(warp, size, primaryHandleId, localPoint, options)
+  const patch = dragWarpHandle(warp, size, primaryHandleId, localPoint)
   if (!patch) return null
 
   const others = selectedHandleIds.filter((id) => id !== primaryHandleId)
   if (others.length === 0 || !supportsMultiSelect(warp.type)) return patch
 
   if (warp.type === 'mesh') {
-    return moveTogether(patch.points, warp.params.points, primaryHandleId, others, 'mesh-', 'points')
+    return moveTogether(
+      patch.points,
+      warp.params.points,
+      primaryHandleId,
+      others,
+      'mesh-',
+      'points'
+    )
   }
   if (warp.type === 'perspective') {
     return moveTogether(
@@ -256,7 +292,10 @@ function moveTogether(
   for (const id of others) {
     const index = indexFrom(id, prefix, points.length)
     if (index === null) continue
-    points[index] = { x: previous[index].x + delta.x, y: previous[index].y + delta.y }
+    points[index] = {
+      x: previous[index].x + delta.x,
+      y: previous[index].y + delta.y,
+    }
   }
 
   return { [key]: points }
@@ -276,8 +315,7 @@ function dragArcAnchor(
   size: WarpContext,
   localPoint: Point
 ): Record<string, unknown> {
-  const clampBaseline = (value: number) =>
-    Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, value))
+  const clampBaseline = (value: number) => Math.min(BASELINE_MAX, Math.max(BASELINE_MIN, value))
   const clampAnchor = (value: number) => Math.min(1, Math.max(0, value))
 
   // 각도가 거의 없으면 원이 사실상 직선이라 회전을 셈에 넣을 필요가 없다

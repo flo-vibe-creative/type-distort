@@ -55,12 +55,14 @@ function GuideLines({
   toCanvas,
   editing,
   hitWidth,
+  onHandleDown,
   onMeshLineDown,
 }: {
   layer: Layer
   toCanvas: (p: Point) => Point
   editing: boolean
   hitWidth: number
+  onHandleDown: (handleId: string, event: React.PointerEvent) => void
   onMeshLineDown: (line: MeshLine, event: React.PointerEvent) => void
 }) {
   const size = warpDomainSize(layer)
@@ -83,7 +85,20 @@ function GuideLines({
         y: center.y + Math.sin(angle) * radius,
       })
     })
-    return dashedLine(circle, 'bulge')
+    // 점선 원을 잡아 끌면 원과 중앙점이 함께 옮겨진다
+    return (
+      <>
+        {dashedLine(circle, 'bulge')}
+        <polyline
+          points={circle.map((p) => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={hitWidth}
+          style={{ cursor: 'move', pointerEvents: 'stroke' }}
+          onPointerDown={(event) => onHandleDown('bulge-area', event)}
+        />
+      </>
+    )
   }
 
   if (layer.warp.type === 'perspective') {
@@ -162,6 +177,7 @@ export function WarpHandles({
         toCanvas={toCanvas}
         editing={editing}
         hitWidth={LINE_HIT_WIDTH / zoom}
+        onHandleDown={onHandleDown}
         onMeshLineDown={onMeshLineDown}
       />
 
