@@ -17,7 +17,7 @@ const WARP_GUIDE: Record<WarpType, string> = {
   arc: '양 끝의 흰 점을 위아래로 끌면 휘는 정도가 바뀝니다. 보라색 기준점은 곡선 위 어디로든 옮길 수 있으며, 그 지점은 휘어도 제자리에 남고 나머지 글자가 그 둘레로 감깁니다. 위아래로 끌면 글자가 곡선의 어디에 올라앉을지(기준선)가 바뀌어, 아래로 내리면 곡선 위에 서고 위로 올리면 매달립니다. 원 전체를 돌리려면 회전 슬라이더를 쓰세요.',
   mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. 여러 개를 한꺼번에 다루려면 레이어를 더블클릭해 점 편집으로 들어가세요. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
   perspective: '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
-  bulge: '가운데 점을 끌어 중심을 옮기고, 오른쪽 점을 끌어 영향 범위를 정합니다. 세기를 음수로 하면 오목해집니다.',
+  bulge: '가운데 점을 끌면 점선 원과 함께 옮겨지고, 오른쪽 점을 끌어 영향 범위를 정합니다. \'중앙점만 움직이기\'를 켜면 점선 원은 제자리에 둔 채 가장 크게 부푸는 지점만 옮겨 한쪽으로 쏠린 볼록을 만들 수 있습니다. 세기를 음수로 하면 오목해집니다.',
 }
 
 function EmptyMessage({ children }: { children: React.ReactNode }) {
@@ -41,6 +41,8 @@ export function InspectorPanel() {
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
   const endWarpEditing = useEditorStore((state) => state.endWarpEditing)
+  const bulgePeakOnly = useEditorStore((state) => state.bulgePeakOnly)
+  const setBulgePeakOnly = useEditorStore((state) => state.setBulgePeakOnly)
 
   const selected = layers.filter((layer) => selectedLayerIds.includes(layer.id))
   const layer = selected.length === 1 ? selected[0] : null
@@ -185,6 +187,33 @@ export function InspectorPanel() {
                 onChange={(value) => updateWarpParams(layer.id, { [slider.key]: value })}
               />
             ))}
+
+            {layer.warp.type === 'bulge' && (
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={bulgePeakOnly}
+                    onChange={(event) => setBulgePeakOnly(event.target.checked)}
+                    className="h-4 w-4 accent-blue-800"
+                  />
+                  <Text variant="ui13" as="span" color="text-fg-secondary">
+                    중앙점만 움직이기
+                  </Text>
+                </label>
+                {(layer.warp.params.peakX !== 0 || layer.warp.params.peakY !== 0) && (
+                  <button
+                    type="button"
+                    onClick={() => updateWarpParams(layer.id, { peakX: 0, peakY: 0 })}
+                    className="rounded border border-border px-2 py-1 hover:bg-surface-minimal"
+                  >
+                    <Text variant="caption12" as="span" color="text-fg-secondary">
+                      원 중심으로
+                    </Text>
+                  </button>
+                )}
+              </div>
+            )}
 
             <Text variant="caption12" color="text-fg-tertiary">
               {WARP_GUIDE[layer.warp.type]}

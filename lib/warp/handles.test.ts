@@ -166,6 +166,41 @@ describe('볼록 핸들', () => {
     const patch = dragWarpHandle(warp, size, 'bulge-radius', { x: 100, y: 50 })
     expect(patch!.radius as number).toBeGreaterThan(0)
   })
+
+  it('중앙점만 움직이기를 켜면 원은 두고 중앙점만 옮긴다', () => {
+    const patch = dragWarpHandle(createWarp('bulge'), size, 'bulge-center', { x: 120, y: 60 }, {
+      bulgePeakOnly: true,
+    })
+    expect(patch!.cx).toBeUndefined()
+    expect(patch!.peakX as number).toBeCloseTo(0.1, 6)
+    expect(patch!.peakY as number).toBeCloseTo(0.1, 6)
+  })
+
+  it('중앙점을 원 밖으로 끌어도 원 안쪽에 멈춘다', () => {
+    const warp = createWarp('bulge')
+    const patch = dragWarpHandle(warp, size, 'bulge-center', { x: 1000, y: 50 }, {
+      bulgePeakOnly: true,
+    })
+    const radius = 0.6 * (Math.hypot(size.width, size.height) / 2)
+    expect((patch!.peakX as number) * size.width).toBeCloseTo(radius * 0.9, 6)
+  })
+
+  it('중앙점이 비껴 있으면 원 중심 표시가 따로 생기고, 그것을 끌면 둘이 함께 움직인다', () => {
+    const warp = createWarp('bulge')
+    if (warp.type !== 'bulge') throw new Error('bulge')
+    warp.params.peakX = 0.1
+    const handles = warpHandles(warp, size)
+    expect(handles.map((h) => h.id)).toEqual(['bulge-area', 'bulge-center', 'bulge-radius'])
+    expect(handles[1].local).toEqual({ x: 120, y: 50 })
+
+    const byArea = dragWarpHandle(warp, size, 'bulge-area', { x: 110, y: 60 })
+    expect(byArea).toEqual({ cx: 0.55, cy: 0.6 })
+
+    // 끄기 옵션이 꺼져 있으면 중앙점을 끌어도 원과 함께 옮겨, 중앙점이 포인터를 따라간다
+    const byPeak = dragWarpHandle(warp, size, 'bulge-center', { x: 130, y: 50 })
+    expect(byPeak!.cx as number).toBeCloseTo(0.55, 6)
+    expect(byPeak!.cy as number).toBeCloseTo(0.5, 6)
+  })
 })
 
 describe('퍼스펙티브 핸들', () => {

@@ -68,7 +68,8 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
         warpDomainSize(layer),
         drag.handleId,
         drag.selection,
-        local
+        local,
+        { bulgePeakOnly: state.bulgePeakOnly }
       )
       if (patch) state.updateWarpParams(drag.layerId, patch)
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BULGE_DEFAULT, warpBulge } from '@/lib/warp/bulge'
+import { BULGE_DEFAULT, MAX_PEAK_RATIO, bulgeGeometry, warpBulge } from '@/lib/warp/bulge'
 
 const ctx = { width: 200, height: 200 }
 
@@ -55,5 +55,57 @@ describe('warpBulge', () => {
     )
     expect(Math.max(...samples)).toBeGreaterThan(0)
     expect(Math.min(...samples)).toBeLessThan(0)
+  })
+
+  describe('중앙점을 원 중심에서 비껴 둘 때', () => {
+    const shifted = { ...BULGE_DEFAULT, strength: 0.6, radius: 0.5, peakX: 0.15, peakY: 0 }
+    const radiusPx = 0.5 * (Math.hypot(ctx.width, ctx.height) / 2)
+
+    it('중앙점 자리는 움직이지 않는다', () => {
+      const p = warpBulge(0.65, 0.5, shifted, ctx)
+      expect(p.x).toBeCloseTo(130, 6)
+      expect(p.y).toBeCloseTo(100, 6)
+    })
+
+    it('점선 원 경계 근처는 거의 움직이지 않는다 (원이 제자리)', () => {
+      for (const angle of [0, 0.8, 1.6, 2.4, 3.14, 4, 5]) {
+        const x = 100 + Math.cos(angle) * radiusPx * 0.999
+        const y = 100 + Math.sin(angle) * radiusPx * 0.999
+        const p = warpBulge(x / ctx.width, y / ctx.height, shifted, ctx)
+        expect(Math.hypot(p.x - x, p.y - y)).toBeLessThan(0.5)
+      }
+    })
+
+    it('원 밖은 전혀 움직이지 않는다', () => {
+      const x = 100 - radiusPx - 1
+      const p = warpBulge(x / ctx.width, 0.5, shifted, ctx)
+      expect(p.x).toBeCloseTo(x, 6)
+    })
+
+    it('중앙점 바로 옆이 원 중심 옆보다 더 크게 밀려난다', () => {
+      const nearPeak = warpBulge(0.7, 0.5, shifted, ctx).x - 140
+      const centered = { ...shifted, peakX: 0 }
+      const nearCenter = warpBulge(0.55, 0.5, centered, ctx).x - 110
+      expect(nearPeak).toBeGreaterThan(0)
+      expect(nearCenter).toBeGreaterThan(0)
+      // 비껴 둔 쪽은 경계까지 거리가 짧아 같은 거리에서도 변형이 빨리 줄어든다 — 방향만 확인
+      const farSide = warpBulge(0.45, 0.5, shifted, ctx).x - 90
+      expect(farSide).toBeLessThan(0)
+    })
+
+    it('한 방향으로 늘어선 점들의 순서가 뒤집히지 않는다', () => {
+      let previous = -Infinity
+      for (let i = 0; i <= 200; i += 1) {
+        const p = warpBulge(i / 200, 0.5, { ...shifted, strength: 1 }, ctx)
+        expect(p.x).toBeGreaterThanOrEqual(previous - 1e-9)
+        previous = p.x
+      }
+    })
+
+    it('반경을 줄여도 중앙점은 원 안에 머문다', () => {
+      const geometry = bulgeGeometry({ ...shifted, radius: 0.1, peakX: 0.4 }, ctx)
+      const offset = Math.hypot(geometry.peak.x - geometry.center.x, geometry.peak.y - geometry.center.y)
+      expect(offset).toBeLessThanOrEqual(geometry.radius * MAX_PEAK_RATIO + 1e-9)
+    })
   })
 })

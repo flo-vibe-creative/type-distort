@@ -78,6 +78,8 @@ interface EditorState {
    * 캔버스에서 끄는 동작이 레이어 이동이 아니라 조작점 고르기가 된다.
    */
   editingWarpLayerId: string | null
+  /** 볼록/웨이브에서 점선 원은 두고 중앙점만 옮기는지. 화면 조작 방식이라 문서에 저장되지 않는다. */
+  bulgePeakOnly: boolean
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
@@ -108,6 +110,7 @@ interface EditorState {
   clearWarpHandleSelection: () => void
   beginWarpEditing: (layerId: string) => void
   endWarpEditing: () => void
+  setBulgePeakOnly: (peakOnly: boolean) => void
 
   /** 드래그 한 번을 되돌리기 한 단계로 묶는다 */
   beginGesture: () => void
@@ -188,6 +191,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   lastEditAt: 0,
   selectedWarpHandles: [],
   editingWarpLayerId: null,
+  bulgePeakOnly: false,
 
   reset: () =>
     set({
@@ -463,6 +467,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ editingWarpLayerId: layerId, selectedLayerIds: [layerId], selectedWarpHandles: [] }),
 
   endWarpEditing: () => set({ editingWarpLayerId: null, selectedWarpHandles: [] }),
+
+  setBulgePeakOnly: (peakOnly) => set({ bulgePeakOnly: peakOnly }),
 
   beginGesture: () =>
     set((state) => {

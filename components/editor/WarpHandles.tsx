@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import type { Layer } from '@/lib/document/types'
 import { localToCanvas } from '@/lib/render/layerFrame'
 import { warpDomainSize } from '@/lib/render/layerSource'
+import { bulgeGeometry } from '@/lib/warp/bulge'
 import { warpHandles } from '@/lib/warp/handles'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp } from '@/lib/warp/registry'
@@ -13,6 +14,8 @@ import type { Point } from '@/lib/warp/types'
 const HANDLE_SIZE = 10
 /** 점 편집 중에는 잡기 쉽도록 조금 키운다 */
 const EDITING_HANDLE_SIZE = 13
+/** 볼록의 원 중심 표시는 중앙점과 헷갈리지 않게 작게 그린다 */
+const CENTER_MARK_SIZE = 7
 /** 골라 둔 점은 조금 더 크게 그려 눈에 띄게 한다 */
 const SELECTED_EXTRA = 3
 /** 격자 줄을 잡을 수 있는 두께 (px) — 선 자체는 얇게 보이지만 이만큼은 눌린다 */
@@ -72,8 +75,7 @@ function GuideLines({
 
   if (layer.warp.type === 'bulge') {
     const steps = 64
-    const center = { x: layer.warp.params.cx * size.width, y: layer.warp.params.cy * size.height }
-    const radius = (layer.warp.params.radius * Math.hypot(size.width, size.height)) / 2
+    const { center, radius } = bulgeGeometry(layer.warp.params, size)
     const circle = Array.from({ length: steps + 1 }, (_, index) => {
       const angle = (index / steps) * Math.PI * 2
       return toCanvas({
@@ -167,19 +169,21 @@ export function WarpHandles({
         const point = toCanvas(handle.local)
         const selected = selectedHandleIds.includes(handle.id)
         // 기준선·반경 핸들과 골라 둔 점은 채워서 그려, 그냥 놓인 점들과 구분되게 한다
-        const filled = selected || handle.role !== 'point'
+        const filled = selected || (handle.role !== 'point' && handle.role !== 'center')
+        const diameter =
+          handle.role === 'center' ? CENTER_MARK_SIZE : baseSize + (selected ? SELECTED_EXTRA : 0)
         return (
           <circle
             key={handle.id}
             cx={point.x}
             cy={point.y}
-            r={(baseSize + (selected ? SELECTED_EXTRA : 0)) / 2 / zoom}
+            r={diameter / 2 / zoom}
             fill={filled ? ACCENT : '#ffffff'}
             stroke={selected ? '#ffffff' : ACCENT}
             strokeWidth={selected ? 2 : 1.5}
             vectorEffect="non-scaling-stroke"
             style={{
-              cursor: handle.role === 'anchor' ? 'move' : 'grab',
+              cursor: handle.role === 'anchor' || handle.role === 'center' ? 'move' : 'grab',
               pointerEvents: 'auto',
             }}
             onPointerDown={(event) => onHandleDown(handle.id, event)}

@@ -1,4 +1,5 @@
 import type { ArcParams } from '@/lib/warp/arc'
+import { bulgeGeometry, clampPeak } from '@/lib/warp/bulge'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp, type WarpState } from '@/lib/warp/registry'
 import type { Point, WarpContext, WarpType } from '@/lib/warp/types'
@@ -9,7 +10,13 @@ export interface WarpHandle {
   /** 레이어 좌표계에서의 위치 */
   local: Point
   /** 핸들 종류 — 그리는 모양이 다르다 */
-  role: 'point' | 'radius' | 'anchor'
+  role: 'point' | 'radius' | 'anchor' | 'center'
+}
+
+/** 조작점을 끌 때 함께 넘기는 선택 사항 */
+export interface WarpDragOptions {
+  /** 볼록/웨이브에서 점선 원은 두고 가장 부푸는 중앙점만 옮긴다 */
+  bulgePeakOnly?: boolean
 }
 
 /** 현재 왜곡 상태에서 조작점들이 놓일 자리 */
@@ -26,16 +33,17 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
     }
 
     case 'bulge': {
-      const center = { x: warp.params.cx * size.width, y: warp.params.cy * size.height }
-      const halfDiagonal = Math.hypot(size.width, size.height) / 2
-      return [
-        { id: 'bulge-center', local: center, role: 'point' },
-        {
-          id: 'bulge-radius',
-          local: { x: center.x + warp.params.radius * halfDiagonal, y: center.y },
-          role: 'radius',
-        },
-      ]
+      const { center, radius, peak } = bulgeGeometry(warp.params, size)
+      const handles: WarpHandle[] = []
+      // 중앙점이 원 중심에서 비껴 있을 때만 원 중심 표시가 따로 보인다
+      if (Math.hypot(peak.x - center.x, peak.y - center.y) > 0.5) {
+        handles.push({ id: 'bulge-area', local: center, role: 'center' })
+      }
+      handles.push(
+        { id: 'bulge-center', local: peak, role: 'point' },
+        { id: 'bulge-radius', local: { x: center.x + radius, y: center.y }, role: 'radius' }
+      )
+      return handles
     }
 
     case 'perspective':
@@ -77,7 +85,8 @@ export function dragWarpHandle(
   warp: WarpState,
   size: WarpContext,
   handleId: string,
-  localPoint: Point
+  localPoint: Point,
+  options: WarpDragOptions = {}
 ): Record<string, unknown> | null {
   if (size.width <= 0 || size.height <= 0) return null
 
@@ -92,11 +101,23 @@ export function dragWarpHandle(
     }
 
     case 'bulge': {
-      if (handleId === 'bulge-center') {
-        return { cx: localPoint.x / size.width, cy: localPoint.y / size.height }
+      const { center, radius, peak } = bulgeGeometry(warp.params, size)
+      if (handleId === 'bulge-center' && options.bulgePeakOnly) {
+        // 점선 원은 그대로 두고 중앙점만 원 안에서 옮긴다
+        const next = clampPeak(center, radius, localPoint.x - center.x, localPoint.y - center.y)
+        return {
+          peakX: (next.x - center.x) / size.width,
+          peakY: (next.y - center.y) / size.height,
+        }
+      }
+      if (handleId === 'bulge-center' || handleId === 'bulge-area') {
+        // 원과 중앙점을 함께 옮긴다. 끈 점이 포인터를 따라가도록 원 중심을 되짚는다.
+        const grabbed = handleId === 'bulge-center' ? peak : center
+        const x = center.x + (localPoint.x - grabbed.x)
+        const y = center.y + (localPoint.y - grabbed.y)
+        return { cx: x / size.width, cy: y / size.height }
       }
       if (handleId === 'bulge-radius') {
-        const center = { x: warp.params.cx * size.width, y: warp.params.cy * size.height }
         const halfDiagonal = Math.hypot(size.width, size.height) / 2
         const distance = Math.hypot(localPoint.x - center.x, localPoint.y - center.y)
         return { radius: Math.max(MIN_BULGE_RADIUS, distance / halfDiagonal) }
@@ -187,9 +208,10 @@ export function dragWarpHandles(
   size: WarpContext,
   primaryHandleId: string,
   selectedHandleIds: readonly string[],
-  localPoint: Point
+  localPoint: Point,
+  options: WarpDragOptions = {}
 ): Record<string, unknown> | null {
-  const patch = dragWarpHandle(warp, size, primaryHandleId, localPoint)
+  const patch = dragWarpHandle(warp, size, primaryHandleId, localPoint, options)
   if (!patch) return null
 
   const others = selectedHandleIds.filter((id) => id !== primaryHandleId)
