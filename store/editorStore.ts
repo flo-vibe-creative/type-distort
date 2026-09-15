@@ -30,6 +30,12 @@ const CASCADE_WRAP = 8
 /** 되돌리기로 거슬러 갈 수 있는 단계 수 */
 export const HISTORY_LIMIT = 50
 
+/**
+ * 같은 값을 이 시간 안에 연달아 바꾸면 되돌리기 한 단계로 합친다 (ms).
+ * 마지막으로 바꾼 때부터 재므로, 쉬지 않고 끄는 동안은 계속 한 단계로 이어진다.
+ */
+export const COALESCE_MS = 700
+
 export const MIN_ZOOM = 0.05
 export const MAX_ZOOM = 64
 /** 크기를 0으로 만들면 형태가 사라져 되돌릴 수 없으므로 최소값을 둔다 */
@@ -59,6 +65,9 @@ interface EditorState {
   future: EditorDocument[]
   /** 드래그하는 동안에는 기록을 쌓지 않는다 */
   historyPaused: boolean
+  /** 마지막으로 기록한 편집이 무엇이었는지 — 같은 편집이 이어지면 한 단계로 합친다 */
+  lastEditKey: string | null
+  lastEditAt: number
   /**
    * 왜곡 모드에서 골라 둔 조작점들. 여러 개를 골라 함께 옮길 때 쓴다.
    * 화면 조작을 위한 값이라 문서에 저장되거나 되돌리기에 쌓이지 않는다.
@@ -117,28 +126,55 @@ function emptyDocument(): EditorDocument {
 
 /**
  * 문서를 바꾸면서 되돌리기 기록도 함께 남긴다.
- * 드래그 중에는 기록을 멈춰, 한 번의 조작이 한 단계로 묶이게 한다.
+ *
+ * - 드래그 중에는 기록을 멈춰, 한 번의 조작이 한 단계로 묶이게 한다.
+ * - `editKey`를 주면, 같은 편집이 짧은 간격으로 이어질 때 새 단계를 만들지 않고 합친다.
+ *   슬라이더를 끄는 동안 브라우저가 누름·뗌 신호를 보내지 않는 경우(Safari 등)에도
+ *   값이 바뀔 때마다 한 단계씩 쌓이지 않게 하는 장치다.
  */
-function withHistory(state: EditorState, document: EditorDocument) {
+function withHistory(state: EditorState, document: EditorDocument, editKey?: string) {
   if (state.historyPaused) return { document }
+
+  const now = Date.now()
+  const continuing =
+    editKey !== undefined &&
+    editKey === state.lastEditKey &&
+    now - state.lastEditAt < COALESCE_MS
+
+  if (continuing) {
+    return { document, future: [], lastEditAt: now }
+  }
+
   return {
     document,
     past: [...state.past, state.document].slice(-HISTORY_LIMIT),
     future: [],
+    lastEditKey: editKey ?? null,
+    lastEditAt: now,
   }
+}
+
+/** 어떤 값들을 바꿨는지로 편집 종류를 구분한다 (순서와 무관하게 같은 이름이 나오도록) */
+function fieldsOf(patch: object): string {
+  return Object.keys(patch).sort().join(',')
 }
 
 /** 특정 레이어만 바꾸는 흔한 형태를 한곳에 모은다 */
 function mapLayer(
   state: EditorState,
   id: string,
-  change: (layer: Layer) => Layer
+  change: (layer: Layer) => Layer,
+  editKey?: string
 ): Partial<EditorState> {
   if (!state.document.layers.some((layer) => layer.id === id)) return {}
-  return withHistory(state, {
-    ...state.document,
-    layers: state.document.layers.map((layer) => (layer.id === id ? change(layer) : layer)),
-  })
+  return withHistory(
+    state,
+    {
+      ...state.document,
+      layers: state.document.layers.map((layer) => (layer.id === id ? change(layer) : layer)),
+    },
+    editKey
+  )
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -148,6 +184,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   past: [],
   future: [],
   historyPaused: false,
+  lastEditKey: null,
+  lastEditAt: 0,
   selectedWarpHandles: [],
   editingWarpLayerId: null,
 
@@ -159,6 +197,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       historyPaused: false,
+      lastEditKey: null,
+      lastEditAt: 0,
       selectedWarpHandles: [],
       editingWarpLayerId: null,
     }),
@@ -245,23 +285,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   updateTransform: (id, patch) =>
     set((state) =>
-      mapLayer(state, id, (layer) => {
-        const merged = { ...layer.transform, ...patch }
-        return {
-          ...layer,
-          transform: {
-            ...merged,
-            scaleX: clampScale(merged.scaleX),
-            scaleY: clampScale(merged.scaleY),
-          },
-        }
-      })
+      mapLayer(
+        state,
+        id,
+        (layer) => {
+          const merged = { ...layer.transform, ...patch }
+          return {
+            ...layer,
+            transform: {
+              ...merged,
+              scaleX: clampScale(merged.scaleX),
+              scaleY: clampScale(merged.scaleY),
+            },
+          }
+        },
+        `transform:${id}:${fieldsOf(patch)}`
+      )
     ),
 
   updateTransforms: (updates) =>
     set((state) => {
       const ids = Object.keys(updates)
       if (ids.length === 0) return {}
+      const editKey = `transforms:${[...ids].sort().join(',')}:${fieldsOf(updates[ids[0]])}`
       return withHistory(state, {
         ...state.document,
         layers: state.document.layers.map((layer) => {
@@ -277,7 +323,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             },
           }
         }),
-      })
+      }, editKey)
     }),
 
   setWarpType: (id, type) =>
@@ -289,38 +335,50 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   updateWarpParams: (id, patch) =>
     set((state) =>
-      mapLayer(state, id, (layer) => ({
-        ...layer,
-        warp: { ...layer.warp, params: { ...layer.warp.params, ...patch } } as WarpState,
-      }))
+      mapLayer(
+        state,
+        id,
+        (layer) => ({
+          ...layer,
+          warp: { ...layer.warp, params: { ...layer.warp.params, ...patch } } as WarpState,
+        }),
+        `warp:${id}:${fieldsOf(patch)}`
+      )
     ),
 
   setLetterSpacing: (id, spacing) =>
     set((state) =>
-      mapLayer(state, id, (layer) => ({
-        ...layer,
-        letterSpacing: Number.isFinite(spacing) ? spacing : 0,
-      }))
+      mapLayer(
+        state,
+        id,
+        (layer) => ({ ...layer, letterSpacing: Number.isFinite(spacing) ? spacing : 0 }),
+        `spacing:${id}`
+      )
     ),
 
   setCanvasSize: (width, height) =>
     set((state) =>
-      withHistory(state, {
-        ...state.document,
-        canvas: {
-          ...state.document.canvas,
-          width: Math.max(1, Math.round(width)),
-          height: Math.max(1, Math.round(height)),
+      withHistory(
+        state,
+        {
+          ...state.document,
+          canvas: {
+            ...state.document.canvas,
+            width: Math.max(1, Math.round(width)),
+            height: Math.max(1, Math.round(height)),
+          },
         },
-      })
+        'canvas:size'
+      )
     ),
 
   setCanvasBackground: (background) =>
     set((state) =>
-      withHistory(state, {
-        ...state.document,
-        canvas: { ...state.document.canvas, background },
-      })
+      withHistory(
+        state,
+        { ...state.document, canvas: { ...state.document.canvas, background } },
+        'canvas:background'
+      )
     ),
 
   setBackgroundHidden: (backgroundHidden) =>
@@ -343,14 +401,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setCanvasImagePosition: (imagePosition) =>
     set((state) =>
-      withHistory(state, {
-        ...state.document,
-        canvas: { ...state.document.canvas, imagePosition },
-      })
+      withHistory(
+        state,
+        { ...state.document, canvas: { ...state.document.canvas, imagePosition } },
+        'canvas:imagePosition'
+      )
     ),
 
   setLayerFill: (id, fill) =>
-    set((state) => mapLayer(state, id, (layer) => ({ ...layer, fillOverride: fill }))),
+    set((state) =>
+      mapLayer(state, id, (layer) => ({ ...layer, fillOverride: fill }), `fill:${id}`)
+    ),
 
   fitCanvasToContent: (padding = 0) =>
     set((state) => {
@@ -410,34 +471,38 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         historyPaused: true,
         past: [...state.past, state.document].slice(-HISTORY_LIMIT),
         future: [],
+        lastEditKey: null,
       }
     }),
 
-  endGesture: () => set({ historyPaused: false }),
+  // 끌기가 끝난 뒤의 편집은 방금 끈 것과 섞이지 않도록 사슬을 끊는다
+  endGesture: () => set({ historyPaused: false, lastEditKey: null }),
 
   // 되돌리기를 눌렀다는 것은 끌던 조작이 끝났다는 뜻이므로, 멈춰 있던 기록을 함께 푼다.
   // 조작 시작만 알려지고 끝이 오지 않은 경우에도 기록이 영영 멈춰 있지 않게 하는 안전장치다.
   undo: () =>
     set((state) => {
       const previous = state.past[state.past.length - 1]
-      if (!previous) return { historyPaused: false }
+      if (!previous) return { historyPaused: false, lastEditKey: null }
       return {
         document: previous,
         past: state.past.slice(0, -1),
         future: [state.document, ...state.future],
         historyPaused: false,
+        lastEditKey: null,
       }
     }),
 
   redo: () =>
     set((state) => {
       const next = state.future[0]
-      if (!next) return { historyPaused: false }
+      if (!next) return { historyPaused: false, lastEditKey: null }
       return {
         document: next,
         past: [...state.past, state.document],
         future: state.future.slice(1),
         historyPaused: false,
+        lastEditKey: null,
       }
     }),
 
@@ -450,6 +515,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       past: [],
       future: [],
       historyPaused: false,
+      lastEditKey: null,
       selectedLayerIds: [],
       selectedWarpHandles: [],
       editingWarpLayerId: null,

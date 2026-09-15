@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Layer } from '@/lib/document/types'
-import { DEFAULT_CANVAS, HISTORY_LIMIT, useEditorStore } from '@/store/editorStore'
+import { COALESCE_MS, DEFAULT_CANVAS, HISTORY_LIMIT, useEditorStore } from '@/store/editorStore'
 import { createWarp } from '@/lib/warp/registry'
 
 let counter = 0
@@ -292,8 +292,12 @@ describe('되돌리기 / 다시하기', () => {
   it('여러 단계를 순서대로 거슬러 간다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
+    vi.useFakeTimers()
     store().updateTransform(a.id, { x: 10 })
+    // 같은 값을 연달아 바꾸면 합쳐지므로, 따로 기록되도록 충분히 쉬었다가 바꾼다
+    vi.advanceTimersByTime(COALESCE_MS + 100)
     store().updateTransform(a.id, { x: 20 })
+    vi.useRealTimers()
 
     store().undo()
     expect(store().document.layers[0].transform.x).toBe(10)
@@ -330,9 +334,12 @@ describe('되돌리기 / 다시하기', () => {
   it('되돌리기 기록은 정해진 단계 수까지만 쌓인다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
+    vi.useFakeTimers()
     for (let step = 0; step < HISTORY_LIMIT + 20; step += 1) {
       store().updateTransform(a.id, { x: step })
+      vi.advanceTimersByTime(COALESCE_MS + 100)
     }
+    vi.useRealTimers()
     expect(store().past.length).toBe(HISTORY_LIMIT)
   })
 
@@ -567,5 +574,106 @@ describe('배경 이미지 위치', () => {
     expect(store().document.canvas.imagePosition).toEqual({ x: 0, y: 1 })
     store().undo()
     expect(store().document.canvas.imagePosition).toEqual({ x: 0.5, y: 0.5 })
+  })
+})
+
+describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
+  // 브라우저에 따라 슬라이더를 끄는 동안 누름·뗌 신호가 오지 않을 수 있어,
+  // 신호 없이도 같은 값을 연달아 바꾸면 한 단계로 묶여야 한다.
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-15T00:00:00Z'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const arcLayer = () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    return a
+  }
+  const angleOf = () =>
+    (store().document.layers[0].warp.params as unknown as { angle: number }).angle
+
+  it('슬라이더를 끄듯 각도를 잘게 여러 번 바꿔도 한 번에 되돌아간다', () => {
+    const a = arcLayer()
+    for (let angle = 2; angle <= 120; angle += 2) {
+      store().updateWarpParams(a.id, { angle })
+      vi.advanceTimersByTime(16)
+    }
+    expect(angleOf()).toBe(120)
+
+    store().undo()
+    expect(angleOf()).toBe(0)
+  })
+
+  it('한참 쉬었다가 다시 바꾸면 따로 한 단계가 된다', () => {
+    const a = arcLayer()
+    store().updateWarpParams(a.id, { angle: 60 })
+    vi.advanceTimersByTime(3000)
+    store().updateWarpParams(a.id, { angle: 120 })
+
+    store().undo()
+    expect(angleOf()).toBe(60)
+    store().undo()
+    expect(angleOf()).toBe(0)
+  })
+
+  it('다른 값을 바꾸면 따로 기록한다', () => {
+    const a = arcLayer()
+    store().updateWarpParams(a.id, { angle: 90 })
+    store().updateWarpParams(a.id, { baseline: 1 })
+
+    store().undo()
+    expect(angleOf()).toBe(90)
+  })
+
+  it('다른 레이어를 바꾸면 따로 기록한다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().updateWarpParams(a.id, { angle: 90 })
+    store().updateWarpParams(b.id, { angle: 45 })
+
+    store().undo()
+    const params = (id: string) =>
+      store().document.layers.find((l) => l.id === id)!.warp.params as unknown as { angle: number }
+    expect(params(a.id).angle).toBe(90)
+    expect(params(b.id).angle).toBe(0)
+  })
+
+  it('되돌린 직후에 바꾼 값은 앞의 단계에 섞이지 않는다', () => {
+    const a = arcLayer()
+    store().updateWarpParams(a.id, { angle: 90 })
+    store().undo()
+    store().updateWarpParams(a.id, { angle: 30 })
+
+    store().undo()
+    expect(angleOf()).toBe(0)
+  })
+
+  it('중간에 다른 종류의 작업이 끼면 사슬이 끊긴다', () => {
+    const a = arcLayer()
+    store().updateWarpParams(a.id, { angle: 40 })
+    store().toggleLayerVisibility(a.id)
+    store().toggleLayerVisibility(a.id)
+    store().updateWarpParams(a.id, { angle: 80 })
+
+    store().undo()
+    expect(angleOf()).toBe(40)
+  })
+
+  it('자간·글자 색·위치 미세 이동도 연달아 바꾸면 한 단계다', () => {
+    const a = arcLayer()
+    for (const spacing of [0.1, 0.2, 0.3, 0.4]) store().setLetterSpacing(a.id, spacing)
+    store().undo()
+    expect(store().document.layers[0].letterSpacing).toBe(0)
+
+    const x = store().document.layers[0].transform.x
+    for (let step = 1; step <= 10; step += 1) {
+      store().updateTransforms({ [a.id]: { x: x + step } })
+    }
+    store().undo()
+    expect(store().document.layers[0].transform.x).toBe(x)
   })
 })
