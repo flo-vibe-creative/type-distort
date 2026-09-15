@@ -9,6 +9,7 @@ import type { Bounds } from '@/lib/geometry/bbox'
 import { getImage, keepOnlyImages, putImage } from '@/lib/storage/idb'
 import type { VectorShape } from '@/lib/svg/parse'
 import { WARP_TYPES, createWarp, type WarpState } from '@/lib/warp/registry'
+import { nextWarpEffectId, type WarpEffect } from '@/lib/warp/stack'
 import type { WarpType } from '@/lib/warp/types'
 
 /** 저장본 형식이 바뀌면 올린다 — 예전 형식은 조용히 버리고 빈 문서로 시작한다 */
@@ -28,7 +29,9 @@ interface StoredLayer {
   name: string
   visible: boolean
   transform: LayerTransform
-  warp: WarpState
+  warps?: WarpEffect[]
+  /** 효과를 하나만 쓰던 예전 저장본 */
+  warp?: WarpState
   /** 예전 저장본에는 없을 수 있어 되살릴 때 기본값으로 채운다 */
   letterSpacing?: number
   fillOverride?: string | null
@@ -78,7 +81,7 @@ export function serializeDocument(document: EditorDocument): StoredDocument {
       name: layer.name,
       visible: layer.visible,
       transform: layer.transform,
-      warp: layer.warp,
+      warps: layer.warps,
       letterSpacing: layer.letterSpacing,
       fillOverride: layer.fillOverride,
       source:
@@ -123,17 +126,29 @@ function restoreWarp(stored: unknown): WarpState {
   } as WarpState
 }
 
+/** 효과 목록을 되살린다. 효과 하나만 쓰던 예전 저장본은 효과 1개짜리 목록이 된다. */
+function restoreWarps(stored: StoredLayer): WarpEffect[] {
+  if (Array.isArray(stored.warps)) {
+    return stored.warps.filter(isValidWarp).map((warp) => ({
+      ...restoreWarp(warp),
+      id: typeof warp.id === 'string' ? warp.id : nextWarpEffectId(),
+      enabled: warp.enabled !== false,
+    }))
+  }
+  return [{ ...restoreWarp(stored.warp), id: nextWarpEffectId(), enabled: true }]
+}
+
 function restoreLayer(stored: StoredLayer, images: RestoredImages): Layer | null {
   if (!stored || typeof stored.id !== 'string' || !stored.source) return null
   if (!isValidTransform(stored.transform)) return null
-  const warp = restoreWarp(stored.warp)
+  const warps = restoreWarps(stored)
 
   const base = {
     id: stored.id,
     name: typeof stored.name === 'string' ? stored.name : '레이어',
     visible: stored.visible !== false,
     transform: stored.transform,
-    warp,
+    warps,
     letterSpacing: Number.isFinite(stored.letterSpacing) ? (stored.letterSpacing as number) : 0,
     fillOverride: typeof stored.fillOverride === 'string' ? stored.fillOverride : null,
   }

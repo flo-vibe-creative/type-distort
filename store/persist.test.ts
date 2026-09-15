@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { EditorDocument, Layer } from '@/lib/document/types'
 import { deserializeDocument, serializeDocument } from '@/store/persist'
 import { parsePathData } from '@/lib/svg/pathData'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 function vectorLayer(): Layer {
   return {
@@ -22,7 +22,7 @@ function vectorLayer(): Layer {
       bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
     },
     transform: { x: 5, y: 6, scaleX: 1.5, scaleY: 2, rotation: 30 },
-    warp: createWarp('bulge'),
+    warps: [createWarpEffect('bulge', 'fx-1')],
     letterSpacing: 0.25,
     fillOverride: '#ff00ff',
   }
@@ -42,7 +42,7 @@ function rasterLayer(): Layer {
       blob: new Blob(['x'], { type: 'image/png' }),
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('mesh'),
+    warps: [createWarpEffect('mesh', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
   }
@@ -132,18 +132,56 @@ describe('예전 저장본 되살리기', () => {
   it('저장한 뒤에 생긴 왜곡 값은 기본값으로 채운다', () => {
     const stored = serializeDocument(document)
     // 아크에 기준점·회전이 없던 시절의 저장본을 흉내낸다
+    stored.layers[0].warps = undefined
     stored.layers[0].warp = { type: 'arc', params: { angle: 90, strength: 1 } } as never
 
     const restored = deserializeDocument(stored, {})
-    const warp = restored!.layers[0].warp
+    const warp = restored!.layers[0].warps[0]
     expect(warp.type).toBe('arc')
     expect(warp.params).toMatchObject({ angle: 90, strength: 1, anchor: 0.5, baseline: 0.5, rotation: 0 })
   })
 
   it('저장본에 있던 값은 기본값에 덮이지 않는다', () => {
     const stored = serializeDocument(document)
+    stored.layers[0].warps = undefined
     stored.layers[0].warp = { type: 'arc', params: { angle: 90, anchor: 0.2 } } as never
     const restored = deserializeDocument(stored, {})
-    expect(restored!.layers[0].warp.params).toMatchObject({ anchor: 0.2 })
+    expect(restored!.layers[0].warps[0].params).toMatchObject({ anchor: 0.2 })
+  })
+})
+
+describe('효과 목록 저장', () => {
+  it('여러 효과와 켜짐 상태, 순서를 그대로 되살린다', () => {
+    const layer = document.layers[0]
+    const withStack = {
+      ...document,
+      layers: [
+        {
+          ...layer,
+          warps: [
+            createWarpEffect('mesh', 'fx-a'),
+            { ...createWarpEffect('bulge', 'fx-b'), enabled: false },
+          ],
+        },
+        ...document.layers.slice(1),
+      ],
+    }
+    const restored = deserializeDocument(serializeDocument(withStack), {})
+    const warps = restored!.layers[0].warps
+    expect(warps.map((w) => [w.id, w.type, w.enabled])).toEqual([
+      ['fx-a', 'mesh', true],
+      ['fx-b', 'bulge', false],
+    ])
+  })
+
+  it('효과 하나만 쓰던 예전 저장본은 효과 1개짜리 목록이 된다', () => {
+    const stored = serializeDocument(document)
+    stored.layers[0].warps = undefined
+    stored.layers[0].warp = { type: 'mesh', params: createWarpEffect('mesh').params } as never
+    const warps = deserializeDocument(stored, {})!.layers[0].warps
+    expect(warps).toHaveLength(1)
+    expect(warps[0].type).toBe('mesh')
+    expect(warps[0].enabled).toBe(true)
+    expect(typeof warps[0].id).toBe('string')
   })
 })

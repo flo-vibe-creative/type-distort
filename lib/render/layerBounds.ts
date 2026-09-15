@@ -1,7 +1,7 @@
 import type { Layer } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
 import { warpDomainSize } from '@/lib/render/layerSource'
-import { applyWarp } from '@/lib/warp/registry'
+import { applyWarpStack } from '@/lib/warp/stack'
 
 /**
  * 왜곡된 모양이 차지하는 범위를 구한다 (레이어 자체 좌표계, 배치 적용 전).
@@ -25,7 +25,7 @@ export function warpedBounds(layer: Layer): Bounds {
   for (let row = 0; row <= SAMPLE_STEPS; row += 1) {
     const v = row / SAMPLE_STEPS
     for (let col = 0; col <= SAMPLE_STEPS; col += 1) {
-      const point = applyWarp(layer.warp, col / SAMPLE_STEPS, v, size)
+      const point = applyWarpStack(layer.warps, col / SAMPLE_STEPS, v, size)
       if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
       if (point.x < minX) minX = point.x
       if (point.y < minY) minY = point.y

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Layer } from '@/lib/document/types'
 import { isDragMeaningful, layerIdsWithin, rectFromPoints } from '@/lib/render/marquee'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 function layer(id: string, x: number, y: number, visible = true): Layer {
   return {
@@ -10,7 +10,7 @@ function layer(id: string, x: number, y: number, visible = true): Layer {
     visible,
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: 100, maxY: 50 } },
     transform: { x, y, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
   }

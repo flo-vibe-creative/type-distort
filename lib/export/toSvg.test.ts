@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { EditorDocument, Layer } from '@/lib/document/types'
 import { documentToSvgMarkup, hasRasterLayer } from '@/lib/export/toSvg'
 import { parsePathData } from '@/lib/svg/pathData'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 function vectorLayer(overrides: Partial<Layer> = {}): Layer {
   return {
@@ -22,7 +22,7 @@ function vectorLayer(overrides: Partial<Layer> = {}): Layer {
       bounds: { minX: 0, minY: 0, maxX: 100, maxY: 50 },
     },
     transform: { x: 10, y: 20, scaleX: 2, scaleY: 1, rotation: 15 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
     ...overrides,
@@ -100,7 +100,7 @@ describe('documentToSvgMarkup', () => {
         blob: new Blob(),
       },
       transform: { x: 5, y: 5, scaleX: 1, scaleY: 1, rotation: 0 },
-      warp: createWarp('arc'),
+      warps: [createWarpEffect('arc', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
     }
@@ -126,7 +126,7 @@ describe('documentToSvgMarkup', () => {
         blob: new Blob(),
       },
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-      warp: createWarp('arc'),
+      warps: [createWarpEffect('arc', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
     }

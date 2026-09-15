@@ -38,6 +38,7 @@ export function CanvasStage() {
   const selectedWarpHandles = useEditorStore((state) => state.selectedWarpHandles)
   const backgroundImageUrl = useObjectUrl(document.canvas.image?.blob)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
+  const activeWarpId = useEditorStore((state) => state.activeWarpId)
   const setViewport = useEditorStore((state) => state.setViewport)
   const selectLayers = useEditorStore((state) => state.selectLayers)
   const toggleLayerSelection = useEditorStore((state) => state.toggleLayerSelection)
@@ -342,6 +343,7 @@ export function CanvasStage() {
           {singleSelected && singleSelected.visible && (
             <WarpHandles
               layer={singleSelected}
+              activeWarpId={activeWarpId}
               zoom={viewport.zoom}
               editing={editingWarpLayerId === singleSelected.id}
               selectedHandleIds={selectedWarpHandles}

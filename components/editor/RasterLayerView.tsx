@@ -46,7 +46,7 @@ export function RasterLayerView({ layer, source, zoom, dragging }: RasterLayerVi
 
     const rendered = renderWarpedBitmap({
       bitmap: source.bitmap,
-      warp: layer.warp,
+      warps: layer.warps,
       sourceWidth: source.width,
       sourceHeight: source.height,
       bounds,
@@ -70,7 +70,7 @@ export function RasterLayerView({ layer, source, zoom, dragging }: RasterLayerVi
     canvas.height = rendered.height
     context.clearRect(0, 0, canvas.width, canvas.height)
     context.drawImage(rendered, 0, 0)
-  }, [source.bitmap, source.width, source.height, layer.warp, bounds, pixelScale, dragging])
+  }, [source.bitmap, source.width, source.height, layer.warps, bounds, pixelScale, dragging])
 
   const { x, y, scaleX, scaleY, rotation } = layer.transform
 

@@ -81,7 +81,7 @@ export function documentToSvgMarkup(
           const d = warpCommandsToPathData(
             shape.commands,
             spaced.bounds,
-            layer.warp,
+            layer.warps,
             EXPORT_TOLERANCE
           )
           if (!d) return ''

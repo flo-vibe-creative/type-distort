@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Layer } from '@/lib/document/types'
 import { warpedBounds } from '@/lib/render/layerBounds'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 function layer(width: number, height: number): Layer {
   return {
@@ -10,7 +10,7 @@ function layer(width: number, height: number): Layer {
     visible: true,
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: width, maxY: height } },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc', 'fx-1')],
     letterSpacing: 0,
     fillOverride: null,
   }
@@ -27,18 +27,18 @@ describe('warpedBounds', () => {
 
   it('아크를 걸면 세로로 더 커진다', () => {
     const target = layer(200, 100)
-    if (target.warp.type !== 'arc') throw new Error('arc 여야 한다')
-    target.warp.params.angle = 120
+    if (target.warps[0].type !== 'arc') throw new Error('arc 여야 한다')
+    target.warps[0].params.angle = 120
     const b = warpedBounds(target)
     expect(b.maxY - b.minY).toBeGreaterThan(100)
   })
 
   it('볼록을 걸면 가로세로 모두 커진다', () => {
     const target = layer(200, 200)
-    target.warp = createWarp('bulge')
-    if (target.warp.type !== 'bulge') throw new Error('bulge 여야 한다')
-    target.warp.params.strength = 0.6
-    target.warp.params.radius = 2
+    target.warps = [createWarpEffect('bulge', 'fx-1')]
+    if (target.warps[0].type !== 'bulge') throw new Error('bulge 여야 한다')
+    target.warps[0].params.strength = 0.6
+    target.warps[0].params.radius = 2
     const b = warpedBounds(target)
     expect(b.maxX - b.minX).toBeGreaterThan(200)
     expect(b.maxY - b.minY).toBeGreaterThan(200)

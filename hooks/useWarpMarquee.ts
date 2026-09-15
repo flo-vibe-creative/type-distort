@@ -44,7 +44,7 @@ export function useWarpMarquee(toCanvasPoint: (event: PointerEvent) => Point) {
       const layer = state.document.layers.find((item) => item.id === state.editingWarpLayerId)
       if (!marquee || !layer) return null
 
-      const inside = handleIdsWithin(layer, area)
+      const inside = handleIdsWithin(layer, area, state.activeWarpId)
       if (!marquee.additive) return inside
       // 이미 골라 둔 것에 더하되 같은 점이 두 번 들어가지 않게 한다
       return [...marquee.base, ...inside.filter((id) => !marquee.base.includes(id))]

@@ -10,6 +10,7 @@ import type {
 import { sourceSize } from '@/lib/document/types'
 import { contentBounds } from '@/lib/render/canvasBounds'
 import { createWarp, type WarpState } from '@/lib/warp/registry'
+import { createWarpEffect, type WarpEffect } from '@/lib/warp/stack'
 import type { WarpType } from '@/lib/warp/types'
 
 export const DEFAULT_CANVAS: CanvasSettings = {
@@ -78,6 +79,11 @@ interface EditorState {
    * 캔버스에서 끄는 동작이 레이어 이동이 아니라 조작점 고르기가 된다.
    */
   editingWarpLayerId: string | null
+  /**
+   * 패널에서 펼쳐 둔 왜곡 효과. 캔버스에는 이 효과의 조작점만 보인다.
+   * 고른 레이어에 이 효과가 없으면 그 레이어의 첫 효과를 쓴다.
+   */
+  activeWarpId: string | null
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
@@ -89,8 +95,17 @@ interface EditorState {
   updateTransform: (id: string, patch: Partial<LayerTransform>) => void
   /** 여러 레이어의 배치를 한 번에 바꾼다 (함께 옮길 때) */
   updateTransforms: (updates: Record<string, Partial<LayerTransform>>) => void
-  setWarpType: (id: string, type: WarpType) => void
-  updateWarpParams: (id: string, patch: Record<string, unknown>) => void
+  /** 효과를 목록 끝에 더하고 펼친다 */
+  addWarpEffect: (layerId: string, type: WarpType) => void
+  removeWarpEffect: (layerId: string, effectId: string) => void
+  moveWarpEffect: (layerId: string, effectId: string, direction: 'up' | 'down') => void
+  toggleWarpEffect: (layerId: string, effectId: string) => void
+  /** 효과 종류를 바꾼다 (값은 새 종류의 기본값으로) */
+  setWarpEffectType: (layerId: string, effectId: string, type: WarpType) => void
+  updateWarpParams: (layerId: string, effectId: string, patch: Record<string, unknown>) => void
+  /** 쌓인 효과들의 값을 모두 기본값으로 되돌린다 (목록과 순서는 그대로) */
+  resetWarpEffects: (layerId: string) => void
+  setActiveWarp: (effectId: string) => void
   setLetterSpacing: (id: string, spacing: number) => void
   setCanvasSize: (width: number, height: number) => void
   setCanvasBackground: (background: string) => void
@@ -188,6 +203,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   lastEditAt: 0,
   selectedWarpHandles: [],
   editingWarpLayerId: null,
+  activeWarpId: null,
 
   reset: () =>
     set({
@@ -326,24 +342,96 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }, editKey)
     }),
 
-  setWarpType: (id, type) =>
+  addWarpEffect: (layerId, type) =>
+    set((state) => {
+      const effect = createWarpEffect(type)
+      const changed = mapLayer(state, layerId, (layer) => ({
+        ...layer,
+        warps: [...layer.warps, effect],
+      }))
+      if (!changed.document) return {}
+      return { ...changed, activeWarpId: effect.id, selectedWarpHandles: [] }
+    }),
+
+  removeWarpEffect: (layerId, effectId) =>
     set((state) => ({
-      ...mapLayer(state, id, (layer) => ({ ...layer, warp: createWarp(type) })),
+      ...mapLayer(state, layerId, (layer) => ({
+        ...layer,
+        warps: layer.warps.filter((warp) => warp.id !== effectId),
+      })),
+      selectedWarpHandles: [],
+    })),
+
+  moveWarpEffect: (layerId, effectId, direction) =>
+    set((state) => {
+      const layer = state.document.layers.find((item) => item.id === layerId)
+      const index = layer ? layer.warps.findIndex((warp) => warp.id === effectId) : -1
+      const target = direction === 'up' ? index - 1 : index + 1
+      // 이미 끝에 있으면 아무 일도 없으니 되돌리기에도 쌓지 않는다
+      if (!layer || index < 0 || target < 0 || target >= layer.warps.length) return {}
+      return mapLayer(state, layerId, (current) => {
+        const warps = [...current.warps]
+        ;[warps[index], warps[target]] = [warps[target], warps[index]]
+        return { ...current, warps }
+      })
+    }),
+
+  toggleWarpEffect: (layerId, effectId) =>
+    set((state) => ({
+      ...mapLayer(state, layerId, (layer) => ({
+        ...layer,
+        warps: layer.warps.map((warp) =>
+          warp.id === effectId ? { ...warp, enabled: !warp.enabled } : warp
+        ),
+      })),
+      selectedWarpHandles: [],
+    })),
+
+  setWarpEffectType: (layerId, effectId, type) =>
+    set((state) => ({
+      ...mapLayer(state, layerId, (layer) => ({
+        ...layer,
+        warps: layer.warps.map((warp) =>
+          warp.id === effectId ? { ...createWarp(type), id: warp.id, enabled: warp.enabled } : warp
+        ),
+      })),
       // 효과가 바뀌면 조작점 자체가 달라지므로 골라 둔 것을 비운다
       selectedWarpHandles: [],
     })),
 
-  updateWarpParams: (id, patch) =>
+  updateWarpParams: (layerId, effectId, patch) =>
     set((state) =>
       mapLayer(
         state,
-        id,
+        layerId,
         (layer) => ({
           ...layer,
-          warp: { ...layer.warp, params: { ...layer.warp.params, ...patch } } as WarpState,
+          warps: layer.warps.map((warp) =>
+            warp.id === effectId
+              ? ({ ...warp, params: { ...warp.params, ...patch } } as WarpEffect)
+              : warp
+          ),
         }),
-        `warp:${id}:${fieldsOf(patch)}`
+        `warp:${layerId}:${effectId}:${fieldsOf(patch)}`
       )
+    ),
+
+  resetWarpEffects: (layerId) =>
+    set((state) => ({
+      ...mapLayer(state, layerId, (layer) => ({
+        ...layer,
+        warps: layer.warps.map((warp) => ({
+          ...(createWarp(warp.type) as WarpState),
+          id: warp.id,
+          enabled: warp.enabled,
+        })),
+      })),
+      selectedWarpHandles: [],
+    })),
+
+  setActiveWarp: (effectId) =>
+    set((state) =>
+      state.activeWarpId === effectId ? {} : { activeWarpId: effectId, selectedWarpHandles: [] }
     ),
 
   setLetterSpacing: (id, spacing) =>

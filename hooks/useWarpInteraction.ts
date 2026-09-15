@@ -4,16 +4,22 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { canvasToLocal } from '@/lib/render/layerFrame'
 import { warpDomainSize } from '@/lib/render/layerSource'
 import { dragWarpHandles, supportsMultiSelect, warpHandlePosition } from '@/lib/warp/handles'
+import { invertStackPoint, splitStack } from '@/lib/warp/stack'
+import { activeWarpOf } from '@/lib/warp/stackHandles'
 import type { Point } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
 
 interface WarpDrag {
   layerId: string
+  /** 끄고 있는 왜곡 효과 */
+  effectId: string
   handleId: string
   /** 함께 움직일 조작점들 */
   selection: string[]
   /** 잡은 자리와 조작점 사이 간격 (레이어 좌표) — 잡는 순간 조작점이 포인터로 튀지 않게 한다 */
   grabOffset: Point
+  /** 직전에 역계산한 자리 — 다음 역계산의 시작점으로 써서 빨리, 튀지 않게 수렴시킨다 */
+  lastSolved: Point
 }
 
 /**
@@ -31,8 +37,12 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
       const state = useEditorStore.getState()
       const layer = state.document.layers.find((item) => item.id === layerId)
       if (!layer) return
+      const size = warpDomainSize(layer)
+      const activeWarp = activeWarpOf(layer.warps, state.activeWarpId, size)
+      if (!activeWarp) return
+      const { effect } = activeWarp
 
-      const multiSelectable = supportsMultiSelect(layer.warp.type)
+      const multiSelectable = supportsMultiSelect(effect.type)
       const current = multiSelectable ? state.selectedWarpHandles : []
       let selection: string[]
 
@@ -51,17 +61,29 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
       state.setWarpHandleSelection(selection)
       state.beginGesture()
 
+      // 화면에 보이는 자리는 뒤 효과까지 거친 자리라, 이 효과 기준 자리로 거꾸로 풀어 간격을 잰다
       let grabOffset = { x: 0, y: 0 }
-      const handlePosition = warpHandlePosition(layer.warp, warpDomainSize(layer), handleId)
+      const handlePosition = warpHandlePosition(effect, size, handleId)
+      let lastSolved = handlePosition ?? { x: 0, y: 0 }
       if (pointer && handlePosition) {
-        const grabbed = canvasToLocal(layer.transform, pointer)
-        grabOffset = {
-          x: handlePosition.x - grabbed.x,
-          y: handlePosition.y - grabbed.y,
-        }
+        const grabbed = invertStackPoint(
+          activeWarp.after,
+          canvasToLocal(layer.transform, pointer),
+          size,
+          handlePosition
+        )
+        grabOffset = { x: handlePosition.x - grabbed.x, y: handlePosition.y - grabbed.y }
+        lastSolved = grabbed
       }
 
-      dragRef.current = { layerId, handleId, selection, grabOffset }
+      dragRef.current = {
+        layerId,
+        effectId: effect.id,
+        handleId,
+        selection,
+        grabOffset,
+        lastSolved,
+      }
       setActive(true)
     },
     []
@@ -77,20 +99,20 @@ export function useWarpInteraction(toCanvasPoint: (event: PointerEvent) => Point
       const state = useEditorStore.getState()
       const layer = state.document.layers.find((item) => item.id === drag.layerId)
       if (!layer) return
+      const split = splitStack(layer.warps, drag.effectId)
+      if (!split) return
 
-      const pointer = canvasToLocal(layer.transform, toCanvasPoint(event))
-      const local = {
-        x: pointer.x + drag.grabOffset.x,
-        y: pointer.y + drag.grabOffset.y,
-      }
-      const patch = dragWarpHandles(
-        layer.warp,
-        warpDomainSize(layer),
-        drag.handleId,
-        drag.selection,
-        local
+      const size = warpDomainSize(layer)
+      const solved = invertStackPoint(
+        split.after,
+        canvasToLocal(layer.transform, toCanvasPoint(event)),
+        size,
+        drag.lastSolved
       )
-      if (patch) state.updateWarpParams(drag.layerId, patch)
+      drag.lastSolved = solved
+      const local = { x: solved.x + drag.grabOffset.x, y: solved.y + drag.grabOffset.y }
+      const patch = dragWarpHandles(split.effect, size, drag.handleId, drag.selection, local)
+      if (patch) state.updateWarpParams(drag.layerId, drag.effectId, patch)
     }
 
     const onUp = () => {

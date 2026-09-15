@@ -43,12 +43,12 @@ export function VectorLayerView({
     () =>
       spaced.shapes.map((shape, index) => ({
         key: index,
-        d: warpCommandsToPathData(shape.commands, spaced.bounds, layer.warp, tolerance),
+        d: warpCommandsToPathData(shape.commands, spaced.bounds, layer.warps, tolerance),
         fill: layer.fillOverride ?? shape.fill,
         fillRule: shape.fillRule,
         opacity: shape.opacity,
       })),
-    [spaced, layer.warp, layer.fillOverride, tolerance]
+    [spaced, layer.warps, layer.fillOverride, tolerance]
   )
 
   const { x, y, scaleX, scaleY, rotation } = layer.transform

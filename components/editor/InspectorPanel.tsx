@@ -6,21 +6,10 @@ import { ColorField } from '@/components/editor/ColorField'
 import { NumberField } from '@/components/editor/NumberField'
 import { PanelSection } from '@/components/editor/PanelSection'
 import { SliderField } from '@/components/editor/SliderField'
+import { WarpStackSection } from '@/components/editor/WarpStackSection'
 import { Text } from '@/components/ui/Text'
 import { glyphCountOf } from '@/lib/render/letterSpacing'
-import { WARP_EFFECTS, WARP_TYPES } from '@/lib/warp/registry'
-import type { WarpType } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
-
-/** 효과마다 캔버스에서 무엇을 끌면 되는지 알려준다 */
-const WARP_GUIDE: Record<WarpType, string> = {
-  arc: '양 끝의 흰 점을 위아래로 끌면 휘는 정도가 바뀝니다. 보라색 기준점은 곡선 위 어디로든 옮길 수 있으며, 그 지점은 휘어도 제자리에 남고 나머지 글자가 그 둘레로 감깁니다. 위아래로 끌면 글자가 곡선의 어디에 올라앉을지(기준선)가 바뀌어, 아래로 내리면 곡선 위에 서고 위로 올리면 매달립니다. 원 전체를 돌리려면 회전 슬라이더를 쓰세요.',
-  mesh: '격자의 점 16개를 각각 끌어 자유롭게 변형합니다. 여러 개를 한꺼번에 다루려면 레이어를 더블클릭해 점 편집으로 들어가세요. 네 귀퉁이 점은 모서리와 정확히 붙어 움직입니다.',
-  perspective:
-    '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
-  bulge:
-    '가운데 점을 끌면 점선 원은 제자리에 둔 채 가장 크게 부푸는 지점만 옮겨집니다. 원 전체를 옮기려면 점선 원을 잡아 끄세요. 오른쪽 점으로 영향 범위를, 세기를 음수로 하면 오목해집니다.',
-}
 
 function EmptyMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -36,8 +25,7 @@ export function InspectorPanel() {
   const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
   const layers = useEditorStore((state) => state.document.layers)
   const updateTransform = useEditorStore((state) => state.updateTransform)
-  const setWarpType = useEditorStore((state) => state.setWarpType)
-  const updateWarpParams = useEditorStore((state) => state.updateWarpParams)
+  const resetWarpEffects = useEditorStore((state) => state.resetWarpEffects)
   const setLetterSpacing = useEditorStore((state) => state.setLetterSpacing)
   const setLayerFill = useEditorStore((state) => state.setLayerFill)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
@@ -160,52 +148,7 @@ export function InspectorPanel() {
             )}
           </PanelSection>
 
-          <PanelSection title="왜곡">
-            <select
-              value={layer.warp.type}
-              onChange={(event) => setWarpType(layer.id, event.target.value as WarpType)}
-              className="w-full rounded border border-border bg-surface px-2 py-1.5 text-[13px] leading-[18px] outline-none focus:border-blue-800"
-            >
-              {WARP_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {WARP_EFFECTS[type].label}
-                </option>
-              ))}
-            </select>
-
-            {WARP_EFFECTS[layer.warp.type].sliders.map((slider) => (
-              <SliderField
-                key={slider.key}
-                label={slider.label}
-                min={slider.min}
-                max={slider.max}
-                step={slider.step}
-                suffix={slider.unit}
-                displayScale={slider.displayScale}
-                value={Number(
-                  (layer.warp.params as unknown as Record<string, number>)[slider.key] ?? 0
-                )}
-                onChange={(value) => updateWarpParams(layer.id, { [slider.key]: value })}
-              />
-            ))}
-
-            {layer.warp.type === 'bulge' &&
-              (layer.warp.params.peakX !== 0 || layer.warp.params.peakY !== 0) && (
-                <button
-                  type="button"
-                  onClick={() => updateWarpParams(layer.id, { peakX: 0, peakY: 0 })}
-                  className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
-                >
-                  <Text variant="caption12" as="span" color="text-fg-secondary">
-                    중앙점을 원 중심으로
-                  </Text>
-                </button>
-              )}
-
-            <Text variant="caption12" color="text-fg-tertiary">
-              {WARP_GUIDE[layer.warp.type]}
-            </Text>
-          </PanelSection>
+          <WarpStackSection layer={layer} />
 
           <PanelSection title="글자">
             {layer.source.kind === 'vector' ? (
@@ -236,7 +179,7 @@ export function InspectorPanel() {
           <div className="px-4 py-3">
             <button
               type="button"
-              onClick={() => setWarpType(layer.id, layer.warp.type)}
+              onClick={() => resetWarpEffects(layer.id)}
               className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
             >
               <Text variant="caption12" as="span" color="text-fg-secondary">

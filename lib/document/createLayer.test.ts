@@ -38,7 +38,7 @@ describe('createVectorLayer', () => {
 
   it('처음에는 왜곡이 걸려 있지 않다', () => {
     const layer = createVectorLayer(svg, 'WOW.svg')
-    expect(layer.warp.type).toBe('arc')
+    expect(layer.warps[0].type).toBe('arc')
     expect(layer.visible).toBe(true)
   })
 

@@ -62,7 +62,7 @@ function bakeRasters(document: EditorDocument, scale: number): BakedRasterMap {
 
     const rendered = renderWarpedBitmap({
       bitmap: layer.source.bitmap,
-      warp: layer.warp,
+      warps: layer.warps,
       sourceWidth: layer.source.width,
       sourceHeight: layer.source.height,
       bounds,

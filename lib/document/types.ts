@@ -1,6 +1,6 @@
 import type { Bounds } from '@/lib/geometry/bbox'
 import type { VectorShape } from '@/lib/svg/parse'
-import type { WarpState } from '@/lib/warp/registry'
+import type { WarpEffect } from '@/lib/warp/stack'
 
 /** 왜곡과 별개인 레이어의 배치 값 */
 export interface LayerTransform {
@@ -40,7 +40,8 @@ export interface Layer {
   visible: boolean
   source: LayerSource
   transform: LayerTransform
-  warp: WarpState
+  /** 위에서부터 차례로 적용하는 왜곡 효과들 */
+  warps: WarpEffect[]
   /**
    * 글자 사이 간격. 글자 높이에 대한 비율이며 0이면 원본 그대로.
    * 이미지 레이어에는 글자 단위가 없어 쓰이지 않는다.

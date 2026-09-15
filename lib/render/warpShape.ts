@@ -2,7 +2,7 @@ import type { Bounds } from '@/lib/geometry/bbox'
 import { flattenPath, type Subpath } from '@/lib/svg/flatten'
 import type { PathCommand } from '@/lib/svg/pathData'
 import { serializeSubpaths } from '@/lib/svg/serialize'
-import { applyWarp, type WarpState } from '@/lib/warp/registry'
+import { applyWarpStack, type WarpStack } from '@/lib/warp/stack'
 
 /** 화면에서 이 정도 어긋나면 눈에 띈다고 보는 기준 (px) */
 const SCREEN_TOLERANCE = 0.35
@@ -28,7 +28,7 @@ export function toleranceForZoom(zoom: number, layerScale: number, dragging: boo
 export function warpPointsOf(
   commands: readonly PathCommand[],
   bounds: Bounds,
-  warp: WarpState,
+  warps: WarpStack,
   tolerance: number
 ): Subpath[] {
   const width = bounds.maxX - bounds.minX
@@ -45,7 +45,7 @@ export function warpPointsOf(
   return flattenPath(commands, tolerance).map((subpath) => ({
     closed: subpath.closed,
     points: subpath.points.map((point) =>
-      applyWarp(warp, (point.x - bounds.minX) / width, (point.y - bounds.minY) / height, context)
+      applyWarpStack(warps, (point.x - bounds.minX) / width, (point.y - bounds.minY) / height, context)
     ),
   }))
 }
@@ -54,8 +54,8 @@ export function warpPointsOf(
 export function warpCommandsToPathData(
   commands: readonly PathCommand[],
   bounds: Bounds,
-  warp: WarpState,
+  warps: WarpStack,
   tolerance: number
 ): string {
-  return serializeSubpaths(warpPointsOf(commands, bounds, warp, tolerance))
+  return serializeSubpaths(warpPointsOf(commands, bounds, warps, tolerance))
 }

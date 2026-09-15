@@ -8,7 +8,7 @@ const square = parsePathData('M 20 10 L 120 10 L 120 60 L 20 60 Z')
 
 describe('warpCommandsToPathData', () => {
   it('왜곡이 없으면 기준 영역의 왼쪽 위를 원점으로 옮긴 경로가 된다', () => {
-    const d = warpCommandsToPathData(square, bounds, createWarp('arc'), 0.1)
+    const d = warpCommandsToPathData(square, bounds, [createWarp('arc')], 0.1)
     expect(d).toBe('M0 0L100 0L100 50L0 50Z')
   })
 
@@ -16,7 +16,7 @@ describe('warpCommandsToPathData', () => {
     const d = warpCommandsToPathData(
       parsePathData('M 5 5 L 5 5 L 5 5 Z'),
       { minX: 5, minY: 5, maxX: 5, maxY: 5 },
-      createWarp('arc'),
+      [createWarp('arc')],
       0.1
     )
     expect(typeof d).toBe('string')
@@ -26,15 +26,15 @@ describe('warpCommandsToPathData', () => {
     const warp = createWarp('arc')
     if (warp.type !== 'arc') throw new Error('arc 여야 한다')
     warp.params.angle = 90
-    const distorted = warpCommandsToPathData(square, bounds, warp, 0.1)
-    expect(distorted).not.toBe(warpCommandsToPathData(square, bounds, createWarp('arc'), 0.1))
+    const distorted = warpCommandsToPathData(square, bounds, [warp], 0.1)
+    expect(distorted).not.toBe(warpCommandsToPathData(square, bounds, [createWarp('arc')], 0.1))
   })
 
   it('아크 왜곡의 가운데는 위로 솟고 양 끝은 내려온다', () => {
     const warp = createWarp('arc')
     if (warp.type !== 'arc') throw new Error('arc 여야 한다')
     warp.params.angle = 120
-    const points = warpPointsOf(square, bounds, warp, 0.1).flatMap((s) => s.points)
+    const points = warpPointsOf(square, bounds, [warp], 0.1).flatMap((s) => s.points)
     const left = points[0]
     const right = points.find((p) => p.x > left.x + 50)
     expect(right).toBeDefined()

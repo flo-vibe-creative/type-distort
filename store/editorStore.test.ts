@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Layer } from '@/lib/document/types'
 import { COALESCE_MS, DEFAULT_CANVAS, HISTORY_LIMIT, useEditorStore } from '@/store/editorStore'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 let counter = 0
 
@@ -17,7 +17,7 @@ function fakeLayer(name: string, width = 100, height = 50): Layer {
       bounds: { minX: 0, minY: 0, maxX: width, maxY: height },
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc', `fx-${counter}`)],
     letterSpacing: 0,
     fillOverride: null,
   }
@@ -143,18 +143,18 @@ describe('배치와 왜곡 수정', () => {
   it('왜곡 종류를 바꾸면 그 효과의 기본값으로 초기화된다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
-    store().updateWarpParams(a.id, { angle: 90 })
-    store().setWarpType(a.id, 'bulge')
-    expect(store().document.layers[0].warp.type).toBe('bulge')
-    store().setWarpType(a.id, 'arc')
-    expect(store().document.layers[0].warp.params).toMatchObject({ angle: 0 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 90 })
+    store().setWarpEffectType(a.id, a.warps[0].id, 'bulge')
+    expect(store().document.layers[0].warps[0].type).toBe('bulge')
+    store().setWarpEffectType(a.id, a.warps[0].id, 'arc')
+    expect(store().document.layers[0].warps[0].params).toMatchObject({ angle: 0 })
   })
 
   it('왜곡 파라미터를 부분적으로 바꾼다', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
-    store().updateWarpParams(a.id, { angle: 45 })
-    expect(store().document.layers[0].warp.params).toMatchObject({ angle: 45, strength: 1 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 45 })
+    expect(store().document.layers[0].warps[0].params).toMatchObject({ angle: 45, strength: 1 })
   })
 
   it('없는 레이어를 수정해도 아무 일도 일어나지 않는다', () => {
@@ -409,7 +409,7 @@ describe('왜곡 조작점 선택', () => {
     const a = fakeLayer('A')
     store().addLayers([a])
     store().setWarpHandleSelection(['mesh-5'])
-    store().setWarpType(a.id, 'perspective')
+    store().setWarpEffectType(a.id, a.warps[0].id, 'perspective')
     expect(store().selectedWarpHandles).toEqual([])
   })
 
@@ -594,12 +594,12 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
     return a
   }
   const angleOf = () =>
-    (store().document.layers[0].warp.params as unknown as { angle: number }).angle
+    (store().document.layers[0].warps[0].params as unknown as { angle: number }).angle
 
   it('슬라이더를 끄듯 각도를 잘게 여러 번 바꿔도 한 번에 되돌아간다', () => {
     const a = arcLayer()
     for (let angle = 2; angle <= 120; angle += 2) {
-      store().updateWarpParams(a.id, { angle })
+      store().updateWarpParams(a.id, a.warps[0].id, { angle })
       vi.advanceTimersByTime(16)
     }
     expect(angleOf()).toBe(120)
@@ -610,9 +610,9 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
 
   it('한참 쉬었다가 다시 바꾸면 따로 한 단계가 된다', () => {
     const a = arcLayer()
-    store().updateWarpParams(a.id, { angle: 60 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 60 })
     vi.advanceTimersByTime(3000)
-    store().updateWarpParams(a.id, { angle: 120 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 120 })
 
     store().undo()
     expect(angleOf()).toBe(60)
@@ -622,8 +622,8 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
 
   it('다른 값을 바꾸면 따로 기록한다', () => {
     const a = arcLayer()
-    store().updateWarpParams(a.id, { angle: 90 })
-    store().updateWarpParams(a.id, { baseline: 1 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 90 })
+    store().updateWarpParams(a.id, a.warps[0].id, { baseline: 1 })
 
     store().undo()
     expect(angleOf()).toBe(90)
@@ -632,21 +632,21 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
   it('다른 레이어를 바꾸면 따로 기록한다', () => {
     const [a, b] = [fakeLayer('A'), fakeLayer('B')]
     store().addLayers([a, b])
-    store().updateWarpParams(a.id, { angle: 90 })
-    store().updateWarpParams(b.id, { angle: 45 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 90 })
+    store().updateWarpParams(b.id, b.warps[0].id, { angle: 45 })
 
     store().undo()
     const params = (id: string) =>
-      store().document.layers.find((l) => l.id === id)!.warp.params as unknown as { angle: number }
+      store().document.layers.find((l) => l.id === id)!.warps[0].params as unknown as { angle: number }
     expect(params(a.id).angle).toBe(90)
     expect(params(b.id).angle).toBe(0)
   })
 
   it('되돌린 직후에 바꾼 값은 앞의 단계에 섞이지 않는다', () => {
     const a = arcLayer()
-    store().updateWarpParams(a.id, { angle: 90 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 90 })
     store().undo()
-    store().updateWarpParams(a.id, { angle: 30 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 30 })
 
     store().undo()
     expect(angleOf()).toBe(0)
@@ -654,10 +654,10 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
 
   it('중간에 다른 종류의 작업이 끼면 사슬이 끊긴다', () => {
     const a = arcLayer()
-    store().updateWarpParams(a.id, { angle: 40 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 40 })
     store().toggleLayerVisibility(a.id)
     store().toggleLayerVisibility(a.id)
-    store().updateWarpParams(a.id, { angle: 80 })
+    store().updateWarpParams(a.id, a.warps[0].id, { angle: 80 })
 
     store().undo()
     expect(angleOf()).toBe(40)
@@ -675,5 +675,76 @@ describe('연달아 바꾼 값은 되돌리기 한 단계로 합친다', () => {
     }
     store().undo()
     expect(store().document.layers[0].transform.x).toBe(x)
+  })
+})
+
+describe('왜곡 효과 겹쳐 쓰기', () => {
+  const layerWith = () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    return a
+  }
+  const warps = () => store().document.layers[0].warps
+
+  it('효과를 더하면 목록 끝에 붙고 펼쳐진다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'bulge')
+    store().addWarpEffect(a.id, 'bulge')
+    expect(warps().map((w) => w.type)).toEqual(['arc', 'bulge', 'bulge'])
+    expect(new Set(warps().map((w) => w.id)).size).toBe(3)
+    expect(store().activeWarpId).toBe(warps()[2].id)
+  })
+
+  it('순서를 바꾸고, 끝에서는 더 가지 않는다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'mesh')
+    const meshId = warps()[1].id
+    store().moveWarpEffect(a.id, meshId, 'up')
+    expect(warps().map((w) => w.type)).toEqual(['mesh', 'arc'])
+    const before = store().past.length
+    store().moveWarpEffect(a.id, meshId, 'up')
+    expect(warps().map((w) => w.type)).toEqual(['mesh', 'arc'])
+    expect(store().past.length).toBe(before)
+  })
+
+  it('끄고 켜고 지울 수 있고, 되돌리기로 돌아온다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'perspective')
+    const id = warps()[1].id
+    store().toggleWarpEffect(a.id, id)
+    expect(warps()[1].enabled).toBe(false)
+    store().removeWarpEffect(a.id, id)
+    expect(warps()).toHaveLength(1)
+    store().undo()
+    expect(warps()).toHaveLength(2)
+    expect(warps()[1].enabled).toBe(false)
+  })
+
+  it('값은 고른 효과에만 들어간다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'arc')
+    const secondId = warps()[1].id
+    store().updateWarpParams(a.id, secondId, { angle: 45 })
+    expect(warps()[0].params).toMatchObject({ angle: 0 })
+    expect(warps()[1].params).toMatchObject({ angle: 45 })
+  })
+
+  it('초기화하면 목록은 두고 값만 기본값으로 돌아간다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'bulge')
+    store().updateWarpParams(a.id, warps()[0].id, { angle: 90 })
+    store().updateWarpParams(a.id, warps()[1].id, { strength: 0.5 })
+    store().resetWarpEffects(a.id)
+    expect(warps().map((w) => w.type)).toEqual(['arc', 'bulge'])
+    expect(warps()[0].params).toMatchObject({ angle: 0 })
+    expect(warps()[1].params).toMatchObject({ strength: 0 })
+  })
+
+  it('다른 효과를 펼치면 골라 둔 조작점이 비워진다', () => {
+    const a = layerWith()
+    store().addWarpEffect(a.id, 'mesh')
+    store().setWarpHandleSelection(['mesh-5'])
+    store().setActiveWarp(warps()[0].id)
+    expect(store().selectedWarpHandles).toEqual([])
   })
 })

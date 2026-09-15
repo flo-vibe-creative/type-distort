@@ -1,5 +1,5 @@
 import type { Bounds } from '@/lib/geometry/bbox'
-import { applyWarp, type WarpState } from '@/lib/warp/registry'
+import { applyWarpStack, type WarpStack } from '@/lib/warp/stack'
 
 /**
  * 이미지 레이어를 격자 메쉬로 늘려 그리는 WebGL 렌더러.
@@ -115,7 +115,7 @@ function getContext(): GlContext | null {
 
 export interface WarpedBitmapRequest {
   bitmap: ImageBitmap
-  warp: WarpState
+  warps: WarpStack
   /** 원본 이미지 크기 (왜곡의 기준 영역) */
   sourceWidth: number
   sourceHeight: number
@@ -161,7 +161,7 @@ export function renderWarpedBitmap(request: WarpedBitmapRequest): HTMLCanvasElem
     const v = row / steps
     for (let col = 0; col <= steps; col += 1) {
       const u = col / steps
-      const point = applyWarp(request.warp, u, v, sourceSize)
+      const point = applyWarpStack(request.warps, u, v, sourceSize)
       positions[cursor * 2] = (point.x - request.bounds.minX) * request.pixelScale
       positions[cursor * 2 + 1] = (point.y - request.bounds.minY) * request.pixelScale
       texCoords[cursor * 2] = u

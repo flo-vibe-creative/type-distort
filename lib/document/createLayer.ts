@@ -2,7 +2,7 @@ import { boundsOfCommands, mergeBounds, type Bounds } from '@/lib/geometry/bbox'
 import type { Layer } from '@/lib/document/types'
 import type { RasterSource } from '@/lib/raster/loadImage'
 import type { ParsedSvg } from '@/lib/svg/parse'
-import { createWarp } from '@/lib/warp/registry'
+import { createWarpEffect } from '@/lib/warp/stack'
 
 let sequence = 0
 
@@ -36,7 +36,7 @@ export function createVectorLayer(svg: ParsedSvg, fileName: string): Layer {
     visible: true,
     source: { kind: 'vector', shapes: svg.shapes, bounds: contentBounds },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc')],
     letterSpacing: 0,
     fillOverride: null,
   }
@@ -57,7 +57,7 @@ export function createRasterLayer(image: RasterSource, fileName: string): Layer 
       blob: image.blob,
     },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-    warp: createWarp('arc'),
+    warps: [createWarpEffect('arc')],
     letterSpacing: 0,
     fillOverride: null,
   }
