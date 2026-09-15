@@ -64,7 +64,9 @@ export function InspectorPanel() {
         <EmptyMessage>
           레이어 {selected.length}개를 골랐습니다
           <br />
-          캔버스에서 함께 옮길 수 있고,
+          끌어서 함께 옮기고, 모서리로 함께 키우고,
+          <br />
+          모서리 바깥에서 함께 돌릴 수 있습니다
           <br />
           세부 설정은 하나만 골랐을 때 조절합니다
         </EmptyMessage>

@@ -11,6 +11,11 @@ import {
   localToCanvas,
   type HandleId,
 } from '@/lib/render/layerFrame'
+import {
+  GROUP_CORNERS,
+  groupCornerPoint,
+  type GroupCorner,
+} from '@/lib/render/groupTransform'
 import type { Point } from '@/lib/warp/types'
 
 /** 화면에서 보이는 핸들 한 변의 크기 (px) */
@@ -106,19 +111,76 @@ export function SelectionFrame({
   )
 }
 
-/** 여러 레이어를 골랐을 때 전체를 감싸는 사각형 */
-export function MultiSelectionOutline({ bounds }: { bounds: Bounds }) {
+const GROUP_CURSORS: Record<GroupCorner, string> = {
+  nw: 'nwse-resize',
+  ne: 'nesw-resize',
+  se: 'nwse-resize',
+  sw: 'nesw-resize',
+}
+
+interface GroupSelectionFrameProps {
+  bounds: Bounds
+  zoom: number
+  onResizeStart: (corner: GroupCorner, event: React.PointerEvent) => void
+  onRotateStart: (event: React.PointerEvent) => void
+}
+
+/**
+ * 여러 레이어를 골랐을 때 전체를 감싸는 상자.
+ * 모서리를 끌면 함께 커지고 줄어들며(비율 유지), 모서리 바깥에서 끌면 함께 돈다.
+ */
+export function GroupSelectionFrame({
+  bounds,
+  zoom,
+  onResizeStart,
+  onRotateStart,
+}: GroupSelectionFrameProps) {
+  const size = HANDLE_SIZE / zoom
+  const rotateZone = ROTATE_ZONE / zoom
+
   return (
-    <rect
-      x={bounds.minX}
-      y={bounds.minY}
-      width={bounds.maxX - bounds.minX}
-      height={bounds.maxY - bounds.minY}
-      fill="none"
-      stroke={ACCENT}
-      strokeWidth={1}
-      strokeDasharray="5 4"
-      vectorEffect="non-scaling-stroke"
-    />
+    <g>
+      <rect
+        x={bounds.minX}
+        y={bounds.minY}
+        width={bounds.maxX - bounds.minX}
+        height={bounds.maxY - bounds.minY}
+        fill="none"
+        stroke={ACCENT}
+        strokeWidth={1}
+        strokeDasharray="5 4"
+        vectorEffect="non-scaling-stroke"
+      />
+
+      {GROUP_CORNERS.map((corner) => {
+        const point = groupCornerPoint(bounds, corner)
+        return (
+          <g key={corner}>
+            {/* 모서리 바깥쪽은 회전 영역 — 눈에는 보이지 않는다 */}
+            <rect
+              x={point.x - rotateZone}
+              y={point.y - rotateZone}
+              width={rotateZone * 2}
+              height={rotateZone * 2}
+              fill="transparent"
+              style={{ cursor: 'grab', pointerEvents: 'auto' }}
+              onPointerDown={onRotateStart}
+            />
+            <rect
+              x={point.x - size / 2}
+              y={point.y - size / 2}
+              width={size}
+              height={size}
+              fill="#ffffff"
+              stroke={ACCENT}
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+              style={{ cursor: GROUP_CURSORS[corner], pointerEvents: 'auto' }}
+              onPointerDown={(event) => onResizeStart(corner, event)}
+            />
+          </g>
+        )
+      })}
+    </g>
   )
 }

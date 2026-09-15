@@ -131,3 +131,13 @@ describe('rotateTransform', () => {
     expect(next.rotation % 15).toBeCloseTo(0, 6)
   })
 })
+
+describe('rotateTransform — 경계 넘기', () => {
+  it('포인터가 ±180° 경계를 가로질러도 한 바퀴를 더 세지 않는다', () => {
+    const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 }
+    const bounds = { minX: -10, minY: -10, maxX: 10, maxY: 10 }
+    const at = (deg: number) => ({ x: 100 * Math.cos((deg * Math.PI) / 180), y: 100 * Math.sin((deg * Math.PI) / 180) })
+    const next = rotateTransform(transform, bounds, at(179), at(-179), false)
+    expect(next.rotation).toBeCloseTo(2, 6)
+  })
+})

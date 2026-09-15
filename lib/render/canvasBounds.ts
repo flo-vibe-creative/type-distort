@@ -39,6 +39,19 @@ export function boundsOfLayers(layers: readonly Layer[]): Bounds | null {
   return bounds
 }
 
+/** 여러 레이어를 감싸는 선택 상자 — 한 개일 때와 같은 간격만큼 띄워 그린다 */
+export function groupFrameBounds(layers: readonly Layer[], zoom: number): Bounds | null {
+  const bounds = boundsOfLayers(layers)
+  if (!bounds) return null
+  const pad = FRAME_PADDING_PX / Math.max(1e-6, zoom)
+  return {
+    minX: bounds.minX - pad,
+    minY: bounds.minY - pad,
+    maxX: bounds.maxX + pad,
+    maxY: bounds.maxY + pad,
+  }
+}
+
 /** 보이는 레이어 전체를 감싸는 범위. 보이는 레이어가 없으면 null. */
 export function contentBounds(document: EditorDocument): Bounds | null {
   let bounds: Bounds | null = null

@@ -1,4 +1,5 @@
 import type { LayerTransform } from '@/lib/document/types'
+import { normalizeDegrees } from '@/lib/geometry/angle'
 import type { Bounds } from '@/lib/geometry/bbox'
 import { MIN_SCALE } from '@/store/editorStore'
 import type { Point } from '@/lib/warp/types'
@@ -140,11 +141,11 @@ export function rotateTransform(
 
   const angleBefore = Math.atan2(pointerStart.y - center.y, pointerStart.x - center.x)
   const angleAfter = Math.atan2(pointer.y - center.y, pointer.x - center.x)
-  const deltaDegrees = ((angleAfter - angleBefore) * 180) / Math.PI
+  const deltaDegrees = normalizeDegrees(((angleAfter - angleBefore) * 180) / Math.PI)
 
-  let rotation = start.rotation + deltaDegrees
+  let rotation = normalizeDegrees(start.rotation + deltaDegrees)
   if (snap) {
-    rotation = Math.round(rotation / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES
+    rotation = normalizeDegrees(Math.round(rotation / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES)
   }
 
   const centerAfter = rotatePoint(

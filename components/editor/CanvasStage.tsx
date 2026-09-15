@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayerView } from '@/components/editor/LayerView'
-import { MultiSelectionOutline, SelectionFrame } from '@/components/editor/SelectionFrame'
+import { GroupSelectionFrame, SelectionFrame } from '@/components/editor/SelectionFrame'
 import { WarpHandles, type MeshLine } from '@/components/editor/WarpHandles'
 import { Text } from '@/components/ui/Text'
 import { useLayerInteraction } from '@/hooks/useLayerInteraction'
@@ -10,7 +10,7 @@ import { useObjectUrl } from '@/hooks/useObjectUrl'
 import { useLayerMarquee } from '@/hooks/useLayerMarquee'
 import { useWarpInteraction } from '@/hooks/useWarpInteraction'
 import { useWarpMarquee } from '@/hooks/useWarpMarquee'
-import { boundsOfLayers } from '@/lib/render/canvasBounds'
+import { groupFrameBounds } from '@/lib/render/canvasBounds'
 import type { HandleId } from '@/lib/render/layerFrame'
 import { overlayStyle, overlayViewBox } from '@/lib/render/overlay'
 import { meshColumnHandleIds, meshRowHandleIds } from '@/lib/render/warpSelection'
@@ -216,8 +216,8 @@ export function CanvasStage() {
   )
   const singleSelected = selectedLayers.length === 1 ? selectedLayers[0] : null
   const multiBounds = useMemo(
-    () => (selectedLayers.length > 1 ? boundsOfLayers(selectedLayers) : null),
-    [selectedLayers]
+    () => (selectedLayers.length > 1 ? groupFrameBounds(selectedLayers, viewport.zoom) : null),
+    [selectedLayers, viewport.zoom]
   )
 
   const cursor = panning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
@@ -305,7 +305,20 @@ export function CanvasStage() {
             />
           )}
 
-          {multiBounds && <MultiSelectionOutline bounds={multiBounds} />}
+          {multiBounds && !editingWarpLayerId && (
+            <GroupSelectionFrame
+              bounds={multiBounds}
+              zoom={viewport.zoom}
+              onResizeStart={(corner, event) => {
+                event.stopPropagation()
+                interaction.beginGroupResize(corner, toCanvasPoint(event))
+              }}
+              onRotateStart={(event) => {
+                event.stopPropagation()
+                interaction.beginGroupRotate(toCanvasPoint(event))
+              }}
+            />
+          )}
 
           {!editingWarpLayerId &&
             selectedLayers.map((layer) => (

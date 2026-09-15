@@ -87,6 +87,8 @@
 | `lib/render/letterSpacing.ts` | 자간 적용 |
 | `lib/render/layerSource.ts` | 자간을 반영한 도형·왜곡 기준 크기 |
 | `lib/render/marquee.ts` | 영역 안 레이어 골라내기 |
+| `lib/render/groupTransform.ts` | 여러 레이어 함께 키우기·돌리기 계산 |
+| `lib/geometry/angle.ts` | 각도 차이 정리 |
 | `lib/render/warpSelection.ts` | 영역 안 조작점·줄 단위 골라내기 |
 | `hooks/useWarpMarquee.ts` | 점 편집 중 영역 선택 |
 | `hooks/useLayerMarquee.ts` | 드래그로 영역 그려 레이어 선택 |
@@ -198,6 +200,7 @@
 - [x] 아크에 회전 추가 — 원 위에서 글자가 앉은 자리 조절
 - [x] 아크 기준점을 곡선 위 앞뒤 어디로든 옮기기 (붙잡아 둘 지점 지정)
 - [x] 되돌리기가 잘게 쪼개지던 문제 — 같은 값을 연달아 바꾸면 한 단계로 합치기 (Safari 대응)
+- [x] 여러 레이어 함께 키우기·돌리기
 
 ## 기능 8. 내보내기 (SVG·PNG·JPEG)
 

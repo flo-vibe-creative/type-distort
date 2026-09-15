@@ -3,13 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LayerTransform } from '@/lib/document/types'
 import type { Bounds } from '@/lib/geometry/bbox'
-import { frameBounds } from '@/lib/render/canvasBounds'
+import { frameBounds, groupFrameBounds } from '@/lib/render/canvasBounds'
+import {
+  groupCornerPoint,
+  groupRotationDelta,
+  groupScaleFactor,
+  oppositeCorner,
+  rotateLayersAbout,
+  scaleLayersAbout,
+  type GroupCorner,
+} from '@/lib/render/groupTransform'
 import { resizeTransform, rotateTransform, type HandleId } from '@/lib/render/layerFrame'
 import { isDragMeaningful } from '@/lib/render/marquee'
 import type { Point } from '@/lib/warp/types'
 import { useEditorStore } from '@/store/editorStore'
 
-type InteractionKind = 'move' | 'resize' | 'rotate'
+type InteractionKind = 'move' | 'resize' | 'rotate' | 'groupResize' | 'groupRotate'
 
 interface Interaction {
   kind: InteractionKind
@@ -26,6 +35,8 @@ interface Interaction {
    * 끌기 시작할 때 선택을 줄여버리면 함께 옮길 수가 없어 놓는 시점에 판단한다.
    */
   collapseTo: string | null
+  /** 여러 레이어를 함께 키우거나 돌릴 때 끈 모서리 */
+  corner: GroupCorner | null
 }
 
 /**
@@ -62,6 +73,37 @@ export function useLayerInteraction(toCanvasPoint: (event: PointerEvent) => Poin
         startPointer: pointer,
         movingFrom,
         collapseTo: kind === 'move' && movingIds.length > 1 ? layerId : null,
+        corner: null,
+      }
+      setActive(true)
+    },
+    []
+  )
+
+  /** 골라 둔 레이어들을 한 덩어리로 키우거나 돌리기 시작한다 */
+  const beginGroup = useCallback(
+    (kind: 'groupResize' | 'groupRotate', corner: GroupCorner | null, pointer: Point) => {
+      const state = useEditorStore.getState()
+      const layers = state.document.layers.filter((layer) =>
+        state.selectedLayerIds.includes(layer.id)
+      )
+      const bounds = groupFrameBounds(layers, state.viewport.zoom)
+      if (layers.length < 2 || !bounds) return
+
+      const movingFrom: Record<string, LayerTransform> = {}
+      for (const layer of layers) movingFrom[layer.id] = { ...layer.transform }
+
+      state.beginGesture()
+      interactionRef.current = {
+        kind,
+        layerId: layers[0].id,
+        handle: null,
+        startTransform: { ...layers[0].transform },
+        bounds,
+        startPointer: pointer,
+        movingFrom,
+        collapseTo: null,
+        corner,
       }
       setActive(true)
     },
@@ -76,6 +118,27 @@ export function useLayerInteraction(toCanvasPoint: (event: PointerEvent) => Poin
       if (!interaction) return
       const pointer = toCanvasPoint(event)
       const { startTransform, bounds, startPointer } = interaction
+
+      if (interaction.kind === 'groupResize' && interaction.corner) {
+        const factor = groupScaleFactor(bounds, interaction.corner, pointer)
+        const anchor = groupCornerPoint(bounds, oppositeCorner(interaction.corner))
+        useEditorStore.getState().updateTransforms(
+          scaleLayersAbout(interaction.movingFrom, anchor, factor)
+        )
+        return
+      }
+
+      if (interaction.kind === 'groupRotate') {
+        const center = {
+          x: (bounds.minX + bounds.maxX) / 2,
+          y: (bounds.minY + bounds.maxY) / 2,
+        }
+        const delta = groupRotationDelta(center, startPointer, pointer, event.shiftKey)
+        useEditorStore.getState().updateTransforms(
+          rotateLayersAbout(interaction.movingFrom, center, delta)
+        )
+        return
+      }
 
       if (interaction.kind === 'move') {
         let dx = pointer.x - startPointer.x
@@ -138,5 +201,8 @@ export function useLayerInteraction(toCanvasPoint: (event: PointerEvent) => Poin
     beginResize: (layerId: string, handle: HandleId, pointer: Point) =>
       begin('resize', layerId, handle, pointer),
     beginRotate: (layerId: string, pointer: Point) => begin('rotate', layerId, null, pointer),
+    beginGroupResize: (corner: GroupCorner, pointer: Point) =>
+      beginGroup('groupResize', corner, pointer),
+    beginGroupRotate: (pointer: Point) => beginGroup('groupRotate', null, pointer),
   }
 }
