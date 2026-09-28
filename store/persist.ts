@@ -28,6 +28,8 @@ interface StoredLayer {
   id: string
   name: string
   visible: boolean
+  /** 예전 저장본에는 없다 — 없으면 잠기지 않은 것으로 본다 */
+  locked?: boolean
   transform: LayerTransform
   warps?: WarpEffect[]
   /** 효과를 하나만 쓰던 예전 저장본 */
@@ -80,6 +82,7 @@ export function serializeDocument(document: EditorDocument): StoredDocument {
       id: layer.id,
       name: layer.name,
       visible: layer.visible,
+      locked: layer.locked,
       transform: layer.transform,
       warps: layer.warps,
       letterSpacing: layer.letterSpacing,
@@ -147,6 +150,7 @@ function restoreLayer(stored: StoredLayer, images: RestoredImages): Layer | null
     id: stored.id,
     name: typeof stored.name === 'string' ? stored.name : '레이어',
     visible: stored.visible !== false,
+    locked: stored.locked === true,
     transform: stored.transform,
     warps,
     letterSpacing: Number.isFinite(stored.letterSpacing) ? (stored.letterSpacing as number) : 0,

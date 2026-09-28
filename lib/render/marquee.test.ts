@@ -3,11 +3,12 @@ import type { Layer } from '@/lib/document/types'
 import { isDragMeaningful, layerIdsWithin, rectFromPoints } from '@/lib/render/marquee'
 import { createWarpEffect } from '@/lib/warp/stack'
 
-function layer(id: string, x: number, y: number, visible = true): Layer {
+function layer(id: string, x: number, y: number, visible = true, locked = false): Layer {
   return {
     id,
     name: id,
     visible,
+    locked,
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: 100, maxY: 50 } },
     transform: { x, y, scaleX: 1, scaleY: 1, rotation: 0 },
     warps: [createWarpEffect('arc', 'fx-1')],
@@ -64,5 +65,12 @@ describe('layerIdsWithin', () => {
 
   it('모서리만 스쳐도 걸린 것으로 본다', () => {
     expect(layerIdsWithin([layer('a', 0, 0)], { minX: 100, minY: 50, maxX: 200, maxY: 150 })).toEqual(['a'])
+  })
+})
+
+describe('잠근 레이어', () => {
+  it('영역으로 골라도 잠긴 것은 빠진다', () => {
+    const layers = [layer('a', 0, 0), layer('b', 0, 0, true, true)]
+    expect(layerIdsWithin(layers, { minX: -10, minY: -10, maxX: 200, maxY: 200 })).toEqual(['a'])
   })
 })

@@ -32,7 +32,7 @@ function intersects(a: Bounds, b: Bounds): boolean {
 export function layerIdsWithin(layers: readonly Layer[], rect: Bounds): string[] {
   return layers
     .filter((layer) => {
-      if (!layer.visible) return false
+      if (!layer.visible || layer.locked) return false
       const bounds = canvasBoundsOfLayer(layer)
       return bounds !== null && intersects(bounds, rect)
     })

@@ -14,6 +14,7 @@ function layer(type: WarpType, overrides: Partial<Layer> = {}): Layer {
     id: 'a',
     name: 'a',
     visible: true,
+    locked: false,
     source: { kind: 'vector', shapes: [], bounds: { minX: 0, minY: 0, maxX: 300, maxY: 150 } },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warps: [createWarpEffect(type, 'fx-1')],

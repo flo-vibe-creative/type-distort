@@ -38,6 +38,8 @@ export interface Layer {
   id: string
   name: string
   visible: boolean
+  /** 잠근 레이어는 대지에서 고르거나 옮길 수 없다 (보이기는 그대로) */
+  locked: boolean
   source: LayerSource
   transform: LayerTransform
   /** 위에서부터 차례로 적용하는 왜곡 효과들 */

@@ -9,6 +9,7 @@ function vectorLayer(): Layer {
     id: 'v1',
     name: '글자',
     visible: true,
+    locked: false,
     source: {
       kind: 'vector',
       shapes: [
@@ -33,6 +34,7 @@ function rasterLayer(): Layer {
     id: 'r1',
     name: '사진',
     visible: false,
+    locked: false,
     source: {
       kind: 'raster',
       bitmap: null as unknown as ImageBitmap,

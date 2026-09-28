@@ -69,6 +69,7 @@ export function LayerPanel() {
   const reorderLayer = useEditorStore((state) => state.reorderLayer)
   const removeLayers = useEditorStore((state) => state.removeLayers)
   const renameLayer = useEditorStore((state) => state.renameLayer)
+  const toggleLayerLock = useEditorStore((state) => state.toggleLayerLock)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
   // 이름을 고치고 있는 레이어와, 고치는 동안의 글자
   const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null)
@@ -140,7 +141,9 @@ export function LayerPanel() {
                       <Text
                         variant="ui13"
                         truncate
-                        color={layer.visible ? 'text-fg-primary' : 'text-fg-disabled'}
+                        color={
+                          layer.visible && !layer.locked ? 'text-fg-primary' : 'text-fg-disabled'
+                        }
                       >
                         {layer.name}
                       </Text>
@@ -188,6 +191,22 @@ export function LayerPanel() {
                       </Text>
                     </button>
                   </span>
+
+                  <button
+                    type="button"
+                    title={layer.locked ? '잠금 풀기' : '잠그기 — 대지에서 고를 수 없게 합니다'}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      toggleLayerLock(layer.id)
+                    }}
+                    className={`shrink-0 px-1 ${
+                      layer.locked ? '' : 'opacity-30 group-hover:opacity-100'
+                    }`}
+                  >
+                    <Text variant="caption12" as="span">
+                      {layer.locked ? '🔒' : '🔓'}
+                    </Text>
+                  </button>
 
                   <button
                     type="button"

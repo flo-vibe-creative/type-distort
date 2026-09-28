@@ -11,6 +11,7 @@ function fakeLayer(name: string, width = 100, height = 50): Layer {
     id: `test-${counter}`,
     name,
     visible: true,
+    locked: false,
     source: {
       kind: 'vector',
       shapes: [],
@@ -819,5 +820,56 @@ describe('레이어 복사·붙여넣기와 이름 바꾸기', () => {
     expect(store().document.layers[0].name).toBe('제목 글자')
     store().undo()
     expect(store().document.layers[0].name).toBe('A')
+  })
+})
+
+describe('레이어 잠금', () => {
+  it('잠그면 고를 수 없고, 골라 둔 상태였다면 선택에서 빠진다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().selectLayers([a.id])
+    expect(store().selectedLayerIds).toEqual([a.id])
+
+    store().toggleLayerLock(a.id)
+    expect(store().document.layers[0].locked).toBe(true)
+    expect(store().selectedLayerIds).toEqual([])
+
+    store().selectLayers([a.id])
+    expect(store().selectedLayerIds).toEqual([])
+  })
+
+  it('Shift로 더해도 잠긴 것은 들어오지 않는다', () => {
+    const [a, b] = [fakeLayer('A'), fakeLayer('B')]
+    store().addLayers([a, b])
+    store().toggleLayerLock(b.id)
+    store().selectLayers([a.id])
+    store().toggleLayerSelection(b.id)
+    expect(store().selectedLayerIds).toEqual([a.id])
+  })
+
+  it('잠금을 풀면 다시 고를 수 있다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().toggleLayerLock(a.id)
+    store().toggleLayerLock(a.id)
+    store().selectLayers([a.id])
+    expect(store().document.layers[0].locked).toBe(false)
+    expect(store().selectedLayerIds).toEqual([a.id])
+  })
+
+  it('점 편집 중인 레이어를 잠그면 점 편집에서 빠져나온다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().beginWarpEditing(a.id)
+    store().toggleLayerLock(a.id)
+    expect(store().editingWarpLayerId).toBeNull()
+  })
+
+  it('잠금은 되돌릴 수 있다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().toggleLayerLock(a.id)
+    store().undo()
+    expect(store().document.layers[0].locked).toBe(false)
   })
 })

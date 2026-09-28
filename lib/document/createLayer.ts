@@ -58,6 +58,7 @@ export function createVectorLayer(svg: ParsedSvg, fileName: string): Layer {
     id: nextId(),
     name: layerNameFromFileName(fileName),
     visible: true,
+    locked: false,
     source: { kind: 'vector', shapes: svg.shapes, bounds: contentBounds },
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
     warps: [createWarpEffect('arc')],
@@ -72,6 +73,7 @@ export function createRasterLayer(image: RasterSource, fileName: string): Layer 
     id: nextId(),
     name: layerNameFromFileName(fileName),
     visible: true,
+    locked: false,
     source: {
       kind: 'raster',
       bitmap: image.bitmap,

@@ -77,9 +77,10 @@ export function RasterLayerView({ layer, source, zoom, dragging }: RasterLayerVi
   return (
     <canvas
       ref={canvasRef}
-      data-layer-id={layer.id}
+      data-layer-id={layer.locked ? undefined : layer.id}
       className="absolute left-0 top-0"
       style={{
+        pointerEvents: layer.locked ? 'none' : 'auto',
         width: `${width}px`,
         height: `${height}px`,
         transformOrigin: '0 0',

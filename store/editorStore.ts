@@ -103,6 +103,8 @@ interface EditorState {
   selectLayers: (ids: readonly string[]) => void
   toggleLayerSelection: (id: string) => void
   toggleLayerVisibility: (id: string) => void
+  /** 레이어 잠그기·풀기. 잠그면 대지에서 고르거나 옮길 수 없다. */
+  toggleLayerLock: (id: string) => void
   reorderLayer: (id: string, direction: 'up' | 'down') => void
   updateTransform: (id: string, patch: Partial<LayerTransform>) => void
   /** 여러 레이어의 배치를 한 번에 바꾼다 (함께 옮길 때) */
@@ -184,6 +186,14 @@ function withHistory(state: EditorState, document: EditorDocument, editKey?: str
 /** 어떤 값들을 바꿨는지로 편집 종류를 구분한다 (순서와 무관하게 같은 이름이 나오도록) */
 function fieldsOf(patch: object): string {
   return Object.keys(patch).sort().join(',')
+}
+
+/** 잠기지 않은 레이어만 남긴다 */
+function unlockedOnly(state: EditorState, ids: readonly string[]): string[] {
+  return ids.filter((id) => {
+    const layer = state.document.layers.find((item) => item.id === id)
+    return layer ? !layer.locked : false
+  })
 }
 
 /** 특정 레이어만 바꾸는 흔한 형태를 한곳에 모은다 */
@@ -314,7 +324,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   selectLayers: (ids) =>
     set((state) => ({
-      selectedLayerIds: [...ids],
+      // 잠근 레이어는 고를 수 없다 (자물쇠를 풀어야 손댈 수 있다)
+      selectedLayerIds: unlockedOnly(state, ids),
       selectedWarpHandles: [],
       // 다른 레이어로 넘어가면 점 편집에서 빠져나온다
       editingWarpLayerId:
@@ -325,13 +336,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({
       selectedLayerIds: state.selectedLayerIds.includes(id)
         ? state.selectedLayerIds.filter((item) => item !== id)
-        : [...state.selectedLayerIds, id],
+        : unlockedOnly(state, [...state.selectedLayerIds, id]),
       selectedWarpHandles: [],
       editingWarpLayerId: null,
     })),
 
   toggleLayerVisibility: (id) =>
     set((state) => mapLayer(state, id, (layer) => ({ ...layer, visible: !layer.visible }))),
+
+  toggleLayerLock: (id) =>
+    set((state) => {
+      const target = state.document.layers.find((layer) => layer.id === id)
+      if (!target) return {}
+      const locking = !target.locked
+      return {
+        ...mapLayer(state, id, (layer) => ({ ...layer, locked: locking })),
+        // 잠근 레이어는 고를 수 없으므로 선택과 점 편집에서도 빼 준다
+        selectedLayerIds: locking
+          ? state.selectedLayerIds.filter((selected) => selected !== id)
+          : state.selectedLayerIds,
+        editingWarpLayerId:
+          locking && state.editingWarpLayerId === id ? null : state.editingWarpLayerId,
+      }
+    }),
 
   reorderLayer: (id, direction) =>
     set((state) => {

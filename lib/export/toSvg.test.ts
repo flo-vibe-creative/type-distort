@@ -9,6 +9,7 @@ function vectorLayer(overrides: Partial<Layer> = {}): Layer {
     id: 'v1',
     name: '글자',
     visible: true,
+    locked: false,
     source: {
       kind: 'vector',
       shapes: [
@@ -91,6 +92,7 @@ describe('documentToSvgMarkup', () => {
       id: 'r1',
       name: '사진',
       visible: true,
+      locked: false,
       source: {
         kind: 'raster',
         bitmap: null as unknown as ImageBitmap,
@@ -117,6 +119,7 @@ describe('documentToSvgMarkup', () => {
       id: 'r1',
       name: '사진',
       visible: true,
+      locked: false,
       source: {
         kind: 'raster',
         bitmap: null as unknown as ImageBitmap,

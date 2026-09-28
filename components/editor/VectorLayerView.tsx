@@ -61,8 +61,9 @@ export function VectorLayerView({
       aria-hidden
     >
       <g
-        data-layer-id={layer.id}
-        style={{ pointerEvents: 'auto' }}
+        // 잠근 레이어는 눌러도 잡히지 않도록 표시 자체를 달지 않는다
+        data-layer-id={layer.locked ? undefined : layer.id}
+        style={{ pointerEvents: layer.locked ? 'none' : 'auto' }}
         transform={`translate(${x} ${y}) rotate(${rotation}) scale(${scaleX} ${scaleY})`}
       >
         {paths.map((path) => (
