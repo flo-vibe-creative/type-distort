@@ -16,7 +16,7 @@ const WARP_GUIDE: Record<WarpType, string> = {
   perspective:
     '네 모서리 점을 끌어 원근을 만듭니다. 여러 모서리를 함께 옮기려면 레이어를 더블클릭해 점 편집으로 들어가세요. 위쪽을 좁히면 멀어지는 느낌이 납니다.',
   mirror:
-    '두 점을 끌어 기준선을 놓습니다. 기준선 위의 글자는 제자리에 남고, 위아래(또는 양옆)가 거울처럼 대칭으로 늘어납니다. 퍼짐을 1보다 작게 하면 기준선 가까이 있던 부분까지 바깥으로 밀려 길게 뻗은 줄기가 생기고, 기울기를 주면 선을 따라가며 늘어나는 정도가 달라집니다.',
+    "두 점을 끌어 기준선을 놓습니다. 기준선 위의 글자는 제자리에 남고, 선에서 떨어진 거리만 늘어납니다. '기준선에서 접어 반사'를 켜면 기준선 너머에 거울상이 하나 더 겹쳐 그려져 접힌 듯한 대칭이 만들어집니다. 퍼짐을 1보다 작게 하면 기준선 가까이 있던 부분까지 바깥으로 밀려 길게 뻗은 줄기가 생기고, 기울기를 주면 선을 따라가며 늘어나는 정도가 달라집니다.",
   bulge:
     '가운데 점을 끌면 점선 원은 제자리에 둔 채 가장 크게 부푸는 지점만 옮겨집니다. 원 전체를 옮기려면 점선 원을 잡아 끄세요. 오른쪽 점으로 영향 범위를, 세기를 음수로 하면 오목해집니다.',
 }
@@ -86,6 +86,22 @@ function EffectBody({ layerId, effect }: { layerId: string; effect: WarpEffect }
           value={Number((effect.params as unknown as Record<string, number>)[slider.key] ?? 0)}
           onChange={(value) => updateWarpParams(layerId, effect.id, { [slider.key]: value })}
         />
+      ))}
+
+      {(WARP_EFFECTS[effect.type].toggles ?? []).map((toggle) => (
+        <label key={toggle.key} className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={(effect.params as unknown as Record<string, boolean>)[toggle.key] === true}
+            onChange={(event) =>
+              updateWarpParams(layerId, effect.id, { [toggle.key]: event.target.checked })
+            }
+            className="h-4 w-4 accent-blue-800"
+          />
+          <Text variant="ui13" as="span" color="text-fg-secondary">
+            {toggle.label}
+          </Text>
+        </label>
       ))}
 
       {effect.type === 'bulge' && (effect.params.peakX !== 0 || effect.params.peakY !== 0) && (

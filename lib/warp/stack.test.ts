@@ -7,6 +7,7 @@ import {
   createWarpEffect,
   invertStackPoint,
   splitStack,
+  stackPasses,
 } from '@/lib/warp/stack'
 import { activeWarpOf } from '@/lib/warp/stackHandles'
 
@@ -130,5 +131,45 @@ describe('activeWarpOf', () => {
     const effect = createWarpEffect('bulge', 'x')
     expect(effect.params).toEqual(createWarp('bulge').params)
     expect(effect.enabled).toBe(true)
+  })
+})
+
+describe('거울 반사 사본', () => {
+  const mirror = (reflect: boolean) => {
+    const effect = createWarpEffect('mirror', 'mir')
+    if (effect.type !== 'mirror') throw new Error('mirror')
+    effect.params.reflect = reflect
+    effect.params.stretch = 2
+    return effect
+  }
+
+  it('반사를 켜면 사본이 둘이 되고, 끄면 하나다', () => {
+    expect(stackPasses([mirror(true)])).toHaveLength(2)
+    expect(stackPasses([mirror(false)])).toHaveLength(1)
+    expect(stackPasses([arc(90)])).toHaveLength(1)
+  })
+
+  it('두 번째 사본은 기준선 너머에 거울처럼 비친다', () => {
+    const passes = stackPasses([mirror(true)])
+    const source = { x: 40, y: 20 }
+    const normal = applyStackToPoint(passes[0], source, ctx)
+    const reflected = applyStackToPoint(passes[1], source, ctx)
+    // 기준선은 세로 한가운데(y = 50)를 가로지른다
+    expect(reflected.x).toBeCloseTo(normal.x, 6)
+    expect(reflected.y).toBeCloseTo(100 - normal.y, 6)
+  })
+
+  it('뒤에 쌓인 효과는 두 사본 모두에 걸린다', () => {
+    const passes = stackPasses([mirror(true), bulge(0.5, 'after')])
+    expect(passes.every((pass) => pass[pass.length - 1].type === 'bulge')).toBe(true)
+  })
+
+  it('꺼 둔 거울은 사본을 만들지 않는다', () => {
+    expect(stackPasses([{ ...mirror(true), enabled: false }])).toHaveLength(1)
+  })
+
+  it('거울을 여러 개 쌓아도 사본 수는 제한된다', () => {
+    const many = [1, 2, 3, 4, 5].map((n) => ({ ...mirror(true), id: `m${n}` }))
+    expect(stackPasses(many).length).toBeLessThanOrEqual(8)
   })
 })

@@ -18,6 +18,10 @@ export interface MirrorParams {
   curve: number
   /** 기준선을 따라가며 늘이는 정도를 달리한다. 양수면 끝점 쪽이, 음수면 시작점 쪽이 더 늘어난다. */
   taper: number
+  /** 기준선에서 접어, 반대쪽에 거울상을 하나 더 그린다 */
+  reflect: boolean
+  /** 그 거울상을 그릴 때만 켜지는 내부 값. 기준선 반대쪽으로 뒤집는다. */
+  flip?: boolean
 }
 
 export const MIRROR_DEFAULT: MirrorParams = {
@@ -28,10 +32,16 @@ export const MIRROR_DEFAULT: MirrorParams = {
   stretch: 1,
   curve: 1,
   taper: 0,
+  reflect: true,
 }
 
 /** 늘이는 정도가 0 밑으로 내려가 뒤집히지는 않게 막는다 */
 const MIN_SCALE = 0
+
+/** 이미 그려진 결과를 기준선 너머로 그대로 비추는 값 (거울상 패스에서 쓴다) */
+export function mirrorReflection(params: MirrorParams): MirrorParams {
+  return { ...params, stretch: 1, curve: 1, taper: 0, reflect: false, flip: true }
+}
 
 /**
  * 기준선을 축으로 위아래(양옆)를 거울처럼 대칭으로 늘이거나 줄인다.
@@ -68,7 +78,8 @@ export const warpMirror: WarpFn<MirrorParams> = (u, v, params, ctx) => {
 
   const magnitude = Math.abs(distance) / length
   const curved = params.curve === 1 ? magnitude : Math.pow(magnitude, params.curve)
-  const moved = Math.sign(distance) * length * scale * curved
+  const side = params.flip ? -Math.sign(distance) : Math.sign(distance)
+  const moved = side * length * scale * curved
 
   return {
     x: a.x + ex * along + nx * moved,
