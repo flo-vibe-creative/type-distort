@@ -56,6 +56,14 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
       return handles
     }
 
+    case 'mirror': {
+      const { ax, ay, bx, by } = warp.params
+      return [
+        { id: 'mirror-a', local: { x: ax * size.width, y: ay * size.height }, role: 'point' },
+        { id: 'mirror-b', local: { x: bx * size.width, y: by * size.height }, role: 'point' },
+      ]
+    }
+
     case 'perspective':
       return warp.params.corners.map((corner, index) => ({
         id: `perspective-${index}`,
@@ -146,6 +154,15 @@ export function dragWarpHandle(
         const distance = Math.hypot(localPoint.x - center.x, localPoint.y - center.y)
         return { radius: Math.max(MIN_BULGE_RADIUS, distance / halfDiagonal) }
       }
+      return null
+    }
+
+    case 'mirror': {
+      // 기준선 위의 점은 제자리에 남으므로, 끈 자리가 곧 그 점의 새 자리다
+      const x = localPoint.x / size.width
+      const y = localPoint.y / size.height
+      if (handleId === 'mirror-a') return { ax: x, ay: y }
+      if (handleId === 'mirror-b') return { bx: x, by: y }
       return null
     }
 

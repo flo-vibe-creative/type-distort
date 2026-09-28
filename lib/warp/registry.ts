@@ -1,6 +1,7 @@
 import { ARC_DEFAULT, warpArc, type ArcParams } from '@/lib/warp/arc'
 import { BULGE_DEFAULT, warpBulge, type BulgeParams } from '@/lib/warp/bulge'
 import { MESH_DEFAULT, warpMesh, type MeshParams } from '@/lib/warp/mesh'
+import { MIRROR_DEFAULT, warpMirror, type MirrorParams } from '@/lib/warp/mirror'
 import {
   PERSPECTIVE_DEFAULT,
   warpPerspective,
@@ -33,8 +34,9 @@ export type WarpState =
   | { type: 'mesh'; params: MeshParams }
   | { type: 'perspective'; params: PerspectiveParams }
   | { type: 'bulge'; params: BulgeParams }
+  | { type: 'mirror'; params: MirrorParams }
 
-export const WARP_TYPES: readonly WarpType[] = ['arc', 'mesh', 'perspective', 'bulge']
+export const WARP_TYPES: readonly WarpType[] = ['arc', 'mesh', 'perspective', 'bulge', 'mirror']
 
 export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
   arc: {
@@ -79,6 +81,14 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
       { key: 'waves', label: '파동 수', min: 0, max: 8, step: 1 },
     ],
   },
+  mirror: {
+    label: '거울 / 늘이기',
+    sliders: [
+      { key: 'stretch', label: '늘이기', min: 0, max: 6, step: 0.05 },
+      { key: 'curve', label: '퍼짐', min: 0.2, max: 2, step: 0.05 },
+      { key: 'taper', label: '기울기', min: -1, max: 1, step: 0.05 },
+    ],
+  },
 }
 
 /** 기본 파라미터를 복제해 새 왜곡 상태를 만든다 (효과끼리 값이 섞이지 않도록) */
@@ -95,6 +105,8 @@ export function createWarp(type: WarpType): WarpState {
       }
     case 'bulge':
       return { type: 'bulge', params: { ...BULGE_DEFAULT } }
+    case 'mirror':
+      return { type: 'mirror', params: { ...MIRROR_DEFAULT } }
   }
 }
 
@@ -109,5 +121,7 @@ export function applyWarp(warp: WarpState, u: number, v: number, ctx: WarpContex
       return warpPerspective(u, v, warp.params, ctx)
     case 'bulge':
       return warpBulge(u, v, warp.params, ctx)
+    case 'mirror':
+      return warpMirror(u, v, warp.params, ctx)
   }
 }

@@ -335,3 +335,22 @@ describe('여러 점 함께 옮기기', () => {
     ).toBeNull()
   })
 })
+
+describe('거울 핸들', () => {
+  it('기준선 양 끝에 핸들이 놓인다', () => {
+    const handles = warpHandles(createWarp('mirror'), size)
+    expect(handles.map((h) => h.id)).toEqual(['mirror-a', 'mirror-b'])
+    expect(handles[0].local).toEqual({ x: 20, y: 50 })
+    expect(handles[1].local).toEqual({ x: 180, y: 50 })
+  })
+
+  it('끝점을 끌면 기준선이 기운다', () => {
+    const patch = dragWarpHandle(createWarp('mirror'), size, 'mirror-b', { x: 200, y: 0 })
+    expect(patch).toEqual({ bx: 1, by: 0 })
+  })
+
+  it('시작점만 끌면 끝점은 그대로다', () => {
+    const patch = dragWarpHandle(createWarp('mirror'), size, 'mirror-a', { x: 0, y: 100 })
+    expect(patch).toEqual({ ax: 0, ay: 1 })
+  })
+})
