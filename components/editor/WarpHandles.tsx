@@ -3,6 +3,7 @@
 import type { Layer } from '@/lib/document/types'
 import { localToCanvas } from '@/lib/render/layerFrame'
 import { warpDomainSize } from '@/lib/render/layerSource'
+import { accordionFolds } from '@/lib/warp/accordion'
 import { bulgeGeometry } from '@/lib/warp/bulge'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp, type WarpState } from '@/lib/warp/registry'
@@ -163,13 +164,9 @@ function GuideLines({
     }
 
     // 아코디언은 판이 갈리는 자리도 함께 보여 준다
-    const panels = Math.max(1, Math.round(warp.params.panels))
-    const cuts: Point[][] = []
-    for (let step = -panels; step <= panels * 2; step += 1) {
-      const at = warp.params.centerX + step / panels
-      if (at <= 0 || at >= 1) continue
-      cuts.push(edge({ x: at, y: 0 }, { x: at, y: 1 }))
-    }
+    const cuts = accordionFolds(warp.params)
+      .filter((fold) => fold.x > 0 && fold.x < 1)
+      .map((fold) => edge({ x: fold.x, y: 0 }, { x: fold.x, y: 1 }))
     return (
       <>
         {dashedLine([...outline, outline[0]], warp.type)}

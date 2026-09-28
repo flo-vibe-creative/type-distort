@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ACCORDION_DEFAULT, warpAccordion } from '@/lib/warp/accordion'
+import { ACCORDION_DEFAULT, accordionFolds, warpAccordion } from '@/lib/warp/accordion'
 
 const ctx = { width: 240, height: 100 }
 
@@ -52,41 +52,53 @@ describe('warpAccordion', () => {
     )
   })
 
-  describe('기준점', () => {
-    it('기준점 자리는 아무리 접어도 제자리에 남는다', () => {
-      const params = {
-        ...ACCORDION_DEFAULT,
-        centerX: 0.4,
-        centerY: 0.3,
-        panels: 4,
-        offset: 0.8,
-        squeeze: 0.6,
-      }
-      const p = warpAccordion(0.4, 0.3, params, ctx)
-      expect(p.x).toBeCloseTo(0.4 * ctx.width, 6)
-      expect(p.y).toBeCloseTo(0.3 * ctx.height, 6)
+  describe('접히는 자리 기준점', () => {
+    it('판 수보다 하나 많게, 고르게 놓인다', () => {
+      expect(accordionFolds({ ...ACCORDION_DEFAULT, panels: 3 })).toEqual([
+        { x: 0, y: 0.5 },
+        { x: 1 / 3, y: 0.5 },
+        { x: 2 / 3, y: 0.5 },
+        { x: 1, y: 0.5 },
+      ])
+      expect(accordionFolds({ ...ACCORDION_DEFAULT, panels: 5 })).toHaveLength(6)
     })
 
-    it('기준점을 옮기면 판이 갈리는 자리도 함께 옮겨진다', () => {
-      const params = { ...ACCORDION_DEFAULT, centerX: 0.25, panels: 4, offset: 0.5 }
-      const middleOf = (u: number) => warpAccordion(u, 0.5, params, ctx).y
-      // 경계는 0.25에서 0.25씩 — 기준점 자리는 그대로, 한 칸 건너는 밀린다
-      expect(middleOf(0.25)).toBeCloseTo(50, 6)
-      expect(middleOf(0.5)).toBeCloseTo(50 - 50, 6)
-      expect(middleOf(0.75)).toBeCloseTo(50, 6)
+    it('끌어 옮긴 자리를 그대로 쓴다', () => {
+      const folds = [
+        { x: 0, y: 0.5 },
+        { x: 0.2, y: 0.1 },
+        { x: 1, y: 0.9 },
+      ]
+      const params = { ...ACCORDION_DEFAULT, panels: 2, folds }
+      // 옮겨 둔 자리가 그대로 결과에 나온다
+      expect(warpAccordion(0.2, 0.5, params, ctx).y).toBeCloseTo(10, 6)
+      expect(warpAccordion(1, 0.5, params, ctx).y).toBeCloseTo(90, 6)
+      // 자리 사이는 고르게 이어진다
+      expect(warpAccordion(0.1, 0.5, params, ctx).y).toBeCloseTo(30, 6)
     })
 
-    it('기준점 왼쪽으로도 판이 이어진다', () => {
-      const params = { ...ACCORDION_DEFAULT, centerX: 0.5, panels: 2, offset: 0.5 }
-      expect(warpAccordion(0, 0.5, params, ctx).y).toBeCloseTo(50 - 50, 6)
-      expect(warpAccordion(0.25, 0.5, params, ctx).y).toBeCloseTo(50 - 25, 6)
+    it('판 수가 바뀌어 수가 맞지 않으면 고르게 다시 놓는다', () => {
+      const folds = [
+        { x: 0, y: 0.5 },
+        { x: 0.2, y: 0.1 },
+        { x: 1, y: 0.9 },
+      ]
+      const params = { ...ACCORDION_DEFAULT, panels: 4, folds }
+      expect(accordionFolds(params).map((fold) => fold.x)).toEqual([0, 0.25, 0.5, 0.75, 1])
     })
 
-    it('기준점 높이를 옮기면 그 높이를 축으로 눌린다', () => {
-      const params = { ...ACCORDION_DEFAULT, centerX: 0, centerY: 0.2, panels: 2, squeeze: 0.5 }
-      // 기준점 높이는 그대로, 아래쪽만 절반으로 눌린다
-      expect(warpAccordion(0.5, 0.2, params, ctx).y).toBeCloseTo(20, 6)
-      expect(warpAccordion(0.5, 1, params, ctx).y).toBeCloseTo(20 + 0.8 * 100 * 0.5, 6)
+    it('어긋남은 옮겨 둔 자리 위에 더해진다', () => {
+      const folds = [
+        { x: 0, y: 0.5 },
+        { x: 0.5, y: 0.3 },
+        { x: 1, y: 0.5 },
+      ]
+      const params = { ...ACCORDION_DEFAULT, panels: 2, offset: 0.4, folds }
+      // 한 칸 걸러 있는 가운데 자리만 0.4만큼 위로 더 밀린다
+      const ys = accordionFolds(params).map((fold) => fold.y)
+      expect(ys[0]).toBeCloseTo(0.5, 6)
+      expect(ys[1]).toBeCloseTo(-0.1, 6)
+      expect(ys[2]).toBeCloseTo(0.5, 6)
     })
   })
 })

@@ -336,13 +336,10 @@ describe('여러 점 함께 옮기기', () => {
   })
 })
 
-describe('사다리꼴·아코디언 핸들', () => {
+describe('사다리꼴 핸들', () => {
   it('기준점 하나가 놓인다', () => {
     expect(warpHandles(createWarp('fan'), size).map((h) => [h.id, h.role])).toEqual([
       ['fan-center', 'anchor'],
-    ])
-    expect(warpHandles(createWarp('accordion'), size).map((h) => h.id)).toEqual([
-      'accordion-center',
     ])
   })
 
@@ -351,9 +348,6 @@ describe('사다리꼴·아코디언 핸들', () => {
       centerX: 0.25,
       centerY: 0.25,
     })
-    expect(
-      dragWarpHandle(createWarp('accordion'), size, 'accordion-center', { x: 150, y: 75 })
-    ).toEqual({ centerX: 0.75, centerY: 0.75 })
   })
 
   it('기준점은 원본 밖으로 나가지 않는다', () => {
@@ -361,5 +355,56 @@ describe('사다리꼴·아코디언 핸들', () => {
       centerX: 0,
       centerY: 1,
     })
+  })
+})
+
+describe('아코디언 핸들', () => {
+  const accordion = (panels: number) => {
+    const warp = createWarp('accordion')
+    if (warp.type !== 'accordion') throw new Error('accordion')
+    warp.params.panels = panels
+    return warp
+  }
+
+  it('접히는 자리마다 기준점이 하나씩, 판 수보다 하나 많게 놓인다', () => {
+    const handles = warpHandles(accordion(3), size)
+    expect(handles.map((h) => h.id)).toEqual([
+      'accordion-0',
+      'accordion-1',
+      'accordion-2',
+      'accordion-3',
+    ])
+    expect(handles[1].local.x).toBeCloseTo(200 / 3, 6)
+    expect(handles[1].local.y).toBeCloseTo(50, 6)
+    expect(warpHandles(accordion(5), size)).toHaveLength(6)
+  })
+
+  it('기준점을 끌면 그 자리만 움직인다', () => {
+    const patch = dragWarpHandle(accordion(2), size, 'accordion-1', { x: 60, y: 20 })
+    expect(patch!.folds).toEqual([
+      { x: 0, y: 0.5 },
+      { x: 0.3, y: 0.2 },
+      { x: 1, y: 0.5 },
+    ])
+  })
+
+  it('옆 자리를 넘어가지 않는다', () => {
+    const patch = dragWarpHandle(accordion(2), size, 'accordion-1', { x: 1000, y: 50 })
+    const folds = patch!.folds as { x: number }[]
+    expect(folds[1].x).toBeCloseTo(0.98, 6)
+  })
+
+  it('여러 자리를 골라 함께 옮길 수 있다', () => {
+    expect(supportsMultiSelect('accordion')).toBe(true)
+    const warp = accordion(2)
+    const patch = dragWarpHandles(warp, size, 'accordion-1', ['accordion-1', 'accordion-2'], {
+      x: 100,
+      y: 75,
+    })
+    const folds = patch!.folds as { x: number; y: number }[]
+    // 0번 자리는 그대로, 함께 고른 2번 자리는 같은 거리만큼 따라간다
+    expect(folds[0]).toEqual({ x: 0, y: 0.5 })
+    expect(folds[1]).toEqual({ x: 0.5, y: 0.75 })
+    expect(folds[2]).toEqual({ x: 1, y: 0.75 })
   })
 })

@@ -1,4 +1,6 @@
+import type { AccordionParams } from '@/lib/warp/accordion'
 import type { ArcParams } from '@/lib/warp/arc'
+import { accordionFolds } from '@/lib/warp/accordion'
 import { bulgeGeometry, clampPeak } from '@/lib/warp/bulge'
 import { MESH_SIZE } from '@/lib/warp/mesh'
 import { applyWarp, type WarpState } from '@/lib/warp/registry'
@@ -56,12 +58,11 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
       return handles
     }
 
-    // 기준점 하나로 다루는 효과 — 그 점은 어떻게 휘어도 제자리에 남는다
+    // 기준점은 어떻게 휘어도 제자리에 남는다
     case 'fan':
-    case 'accordion':
       return [
         {
-          id: `${warp.type}-center`,
+          id: 'fan-center',
           local: {
             x: warp.params.centerX * size.width,
             y: warp.params.centerY * size.height,
@@ -69,6 +70,14 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
           role: 'anchor',
         },
       ]
+
+    // 접히는 자리마다 기준점이 하나씩 (판 수보다 하나 많다)
+    case 'accordion':
+      return accordionFolds(warp.params).map((fold, index) => ({
+        id: `accordion-${index}`,
+        local: { x: fold.x * size.width, y: fold.y * size.height },
+        role: 'anchor',
+      }))
 
     case 'perspective':
       return warp.params.corners.map((corner, index) => ({
@@ -163,15 +172,17 @@ export function dragWarpHandle(
       return null
     }
 
-    case 'fan':
-    case 'accordion': {
-      if (handleId !== `${warp.type}-center`) return null
+    case 'fan': {
+      if (handleId !== 'fan-center') return null
       const clamp = (value: number) => Math.min(1, Math.max(0, value))
       return {
         centerX: clamp(localPoint.x / size.width),
         centerY: clamp(localPoint.y / size.height),
       }
     }
+
+    case 'accordion':
+      return dragAccordionFold(warp.params, size, handleId, localPoint)
 
     case 'perspective': {
       const index = indexFrom(handleId, 'perspective-', warp.params.corners.length)
@@ -253,7 +264,7 @@ function findArcAngle(
  * 반면 아크의 끝점(각도)이나 볼록의 반경 점은 각자 다른 뜻을 가진 조절점이라 묶이지 않는다.
  */
 export function supportsMultiSelect(type: WarpType): boolean {
-  return type === 'mesh' || type === 'perspective'
+  return type === 'mesh' || type === 'perspective' || type === 'accordion'
 }
 
 /** 여러 점을 골라 둔 상태에서 그중 하나를 끌었을 때, 나머지도 같은 거리만큼 함께 옮긴다 */
@@ -278,6 +289,16 @@ export function dragWarpHandles(
       others,
       'mesh-',
       'points'
+    )
+  }
+  if (warp.type === 'accordion') {
+    return moveTogether(
+      patch.folds,
+      storedFolds(warp.params),
+      primaryHandleId,
+      others,
+      'accordion-',
+      'folds'
     )
   }
   if (warp.type === 'perspective') {
@@ -323,6 +344,47 @@ function moveTogether(
   }
 
   return { [key]: points }
+}
+
+/** 접히는 자리끼리 겹쳐 판이 사라지지 않도록 두는 최소 간격 */
+const MIN_FOLD_GAP = 0.02
+
+/** 어긋남 슬라이더가 그 자리에 더해 놓은 값 */
+function foldDrift(params: AccordionParams, index: number): number {
+  return (params.offset * ((index % 2 === 0 ? 1 : -1) - 1)) / 2
+}
+
+/** 어긋남을 뺀, 저장해 두는 자리들 */
+function storedFolds(params: AccordionParams): Point[] {
+  return accordionFolds(params).map((fold, index) => ({
+    x: fold.x,
+    y: fold.y - foldDrift(params, index),
+  }))
+}
+
+/**
+ * 접히는 자리 하나를 끌었을 때 저장할 자리들을 구한다.
+ *
+ * 순서가 뒤집히면 판이 뒤집혀 보이므로 양옆 자리를 넘지 못하게 막고,
+ * 어긋남으로 더해진 만큼은 빼서 저장해 조작점이 포인터를 그대로 따라오게 한다.
+ */
+function dragAccordionFold(
+  params: AccordionParams,
+  size: WarpContext,
+  handleId: string,
+  localPoint: Point
+): Record<string, unknown> | null {
+  const folds = accordionFolds(params)
+  const index = indexFrom(handleId, 'accordion-', folds.length)
+  if (index === null) return null
+
+  const left = index === 0 ? 0 : folds[index - 1].x + MIN_FOLD_GAP
+  const right = index === folds.length - 1 ? 1 : folds[index + 1].x - MIN_FOLD_GAP
+  const x = Math.min(Math.max(localPoint.x / size.width, left), Math.max(left, right))
+
+  const next = storedFolds(params)
+  next[index] = { x, y: localPoint.y / size.height - foldDrift(params, index) }
+  return { folds: next }
 }
 
 /** 이보다 작은 각도에서는 반지름이 발산해 원이 사실상 직선이 된다 */
