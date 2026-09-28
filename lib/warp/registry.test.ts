@@ -5,8 +5,8 @@ import type { WarpType } from '@/lib/warp/types'
 const ctx = { width: 320, height: 180 }
 
 describe('왜곡 효과 목록', () => {
-  it('등록된 효과가 모두 목록에 있다', () => {
-    expect(WARP_TYPES).toEqual(['arc', 'mesh', 'perspective', 'bulge', 'mirror'])
+  it('네 가지 효과가 모두 등록되어 있다', () => {
+    expect(WARP_TYPES).toEqual(['arc', 'mesh', 'perspective', 'bulge'])
     WARP_TYPES.forEach((type) => {
       expect(WARP_EFFECTS[type].label).toBeTruthy()
     })

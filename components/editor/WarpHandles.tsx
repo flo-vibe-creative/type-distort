@@ -135,19 +135,6 @@ function GuideLines({
     )
   }
 
-  if (warp.type === 'mirror') {
-    // 기준선 — 양 끝 점을 이어 어디를 축으로 늘어나는지 보여준다
-    const a = { x: warp.params.ax * size.width, y: warp.params.ay * size.height }
-    const b = { x: warp.params.bx * size.width, y: warp.params.by * size.height }
-    const samples = Array.from({ length: EDGE_SAMPLES + 1 }, (_, index) =>
-      toCanvas({
-        x: a.x + ((b.x - a.x) * index) / EDGE_SAMPLES,
-        y: a.y + ((b.y - a.y) * index) / EDGE_SAMPLES,
-      })
-    )
-    return dashedLine(samples, 'mirror')
-  }
-
   // 메쉬 — 제어점을 가로줄과 세로줄로 이어 격자를 보여준다.
   // 점 편집 중에는 줄을 눌러 그 줄의 네 점을 통째로 고를 수 있다.
   const grid = warp.params.points.map((point) =>

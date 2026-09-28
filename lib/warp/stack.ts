@@ -1,4 +1,3 @@
-import { mirrorReflection } from '@/lib/warp/mirror'
 import { applyWarp, createWarp, type WarpState } from '@/lib/warp/registry'
 import type { Point, WarpContext, WarpType } from '@/lib/warp/types'
 
@@ -45,33 +44,6 @@ export function applyStackToPoint(stack: WarpStack, point: Point, ctx: WarpConte
 /** 정규화 좌표(u, v)를 효과 목록 전체에 통과시킨다. 효과가 없으면 원래 자리 그대로. */
 export function applyWarpStack(stack: WarpStack, u: number, v: number, ctx: WarpContext): Point {
   return applyStackToPoint(stack, { x: u * ctx.width, y: v * ctx.height }, ctx)
-}
-
-/** 거울상이 겹겹이 늘어나 느려지지 않게 한 레이어에서 그릴 수 있는 사본 수를 제한한다 */
-const MAX_PASSES = 8
-
-/**
- * 한 번에 그려야 할 사본들을 구한다.
- *
- * 보통은 사본이 하나뿐이지만, '반사 겹치기'를 켠 거울 효과를 만나면 그 자리에서 갈라져
- * 기준선 너머에 비친 사본이 하나 더 생긴다. 뒤에 쌓인 효과는 두 사본 모두에 그대로 걸린다.
- */
-export function stackPasses(stack: WarpStack): WarpStack[] {
-  let passes: (WarpState & { enabled?: boolean })[][] = [[]]
-
-  for (const warp of stack) {
-    if (warp.enabled === false) continue
-    if (warp.type === 'mirror' && warp.params.reflect && passes.length * 2 <= MAX_PASSES) {
-      passes = passes.flatMap((pass) => [
-        [...pass, warp],
-        [...pass, warp, { type: 'mirror' as const, params: mirrorReflection(warp.params) }],
-      ])
-      continue
-    }
-    passes = passes.map((pass) => [...pass, warp])
-  }
-
-  return passes
 }
 
 /** 역계산을 멈추는 오차 (px) */

@@ -2,7 +2,7 @@ import type { Bounds } from '@/lib/geometry/bbox'
 import { flattenPath, type Subpath } from '@/lib/svg/flatten'
 import type { PathCommand } from '@/lib/svg/pathData'
 import { serializeSubpaths } from '@/lib/svg/serialize'
-import { applyWarpStack, stackPasses, type WarpStack } from '@/lib/warp/stack'
+import { applyWarpStack, type WarpStack } from '@/lib/warp/stack'
 
 /** 화면에서 이 정도 어긋나면 눈에 띈다고 보는 기준 (px) */
 const SCREEN_TOLERANCE = 0.35
@@ -42,21 +42,12 @@ export function warpPointsOf(
   }
 
   const context = { width, height }
-  const flattened = flattenPath(commands, tolerance)
-  // 거울 효과가 사본을 만들면 같은 모양을 사본 수만큼 그린다
-  return stackPasses(warps).flatMap((pass) =>
-    flattened.map((subpath) => ({
-      closed: subpath.closed,
-      points: subpath.points.map((point) =>
-        applyWarpStack(
-          pass,
-          (point.x - bounds.minX) / width,
-          (point.y - bounds.minY) / height,
-          context
-        )
-      ),
-    }))
-  )
+  return flattenPath(commands, tolerance).map((subpath) => ({
+    closed: subpath.closed,
+    points: subpath.points.map((point) =>
+      applyWarpStack(warps, (point.x - bounds.minX) / width, (point.y - bounds.minY) / height, context)
+    ),
+  }))
 }
 
 /** 왜곡한 결과를 SVG path의 `d` 문자열로 만든다 */

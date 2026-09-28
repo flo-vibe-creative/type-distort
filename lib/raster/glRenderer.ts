@@ -1,5 +1,5 @@
 import type { Bounds } from '@/lib/geometry/bbox'
-import { applyWarpStack, stackPasses, type WarpStack } from '@/lib/warp/stack'
+import { applyWarpStack, type WarpStack } from '@/lib/warp/stack'
 
 /**
  * 이미지 레이어를 격자 메쉬로 늘려 그리는 WebGL 렌더러.
@@ -156,19 +156,17 @@ export function renderWarpedBitmap(request: WarpedBitmapRequest): HTMLCanvasElem
   const positions = new Float32Array(vertexCount * 2)
   const texCoords = new Float32Array(vertexCount * 2)
 
-  const fillGrid = (pass: WarpStack) => {
-    let cursor = 0
-    for (let row = 0; row <= steps; row += 1) {
-      const v = row / steps
-      for (let col = 0; col <= steps; col += 1) {
-        const u = col / steps
-        const point = applyWarpStack(pass, u, v, sourceSize)
-        positions[cursor * 2] = (point.x - request.bounds.minX) * request.pixelScale
-        positions[cursor * 2 + 1] = (point.y - request.bounds.minY) * request.pixelScale
-        texCoords[cursor * 2] = u
-        texCoords[cursor * 2 + 1] = v
-        cursor += 1
-      }
+  let cursor = 0
+  for (let row = 0; row <= steps; row += 1) {
+    const v = row / steps
+    for (let col = 0; col <= steps; col += 1) {
+      const u = col / steps
+      const point = applyWarpStack(request.warps, u, v, sourceSize)
+      positions[cursor * 2] = (point.x - request.bounds.minX) * request.pixelScale
+      positions[cursor * 2 + 1] = (point.y - request.bounds.minY) * request.pixelScale
+      texCoords[cursor * 2] = u
+      texCoords[cursor * 2 + 1] = v
+      cursor += 1
     }
   }
 
@@ -189,40 +187,34 @@ export function renderWarpedBitmap(request: WarpedBitmapRequest): HTMLCanvasElem
     }
   }
 
-  // 거울 효과가 사본을 만들면 같은 그림을 사본마다 한 번씩 겹쳐 그린다
-  for (const pass of stackPasses(request.warps)) {
-    fillGrid(pass)
+  gl.useProgram(context.program)
 
-    gl.useProgram(context.program)
+  gl.bindBuffer(gl.ARRAY_BUFFER, context.positionBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
+  gl.enableVertexAttribArray(context.positionLocation)
+  gl.vertexAttribPointer(context.positionLocation, 2, gl.FLOAT, false, 0, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, context.positionBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
-    gl.enableVertexAttribArray(context.positionLocation)
-    gl.vertexAttribPointer(context.positionLocation, 2, gl.FLOAT, false, 0, 0)
+  gl.bindBuffer(gl.ARRAY_BUFFER, context.texCoordBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.DYNAMIC_DRAW)
+  gl.enableVertexAttribArray(context.texCoordLocation)
+  gl.vertexAttribPointer(context.texCoordLocation, 2, gl.FLOAT, false, 0, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, context.texCoordBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.DYNAMIC_DRAW)
-    gl.enableVertexAttribArray(context.texCoordLocation)
-    gl.vertexAttribPointer(context.texCoordLocation, 2, gl.FLOAT, false, 0, 0)
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, context.indexBuffer)
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW)
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, context.indexBuffer)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW)
+  gl.bindTexture(gl.TEXTURE_2D, context.texture)
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, request.bitmap)
 
-    gl.bindTexture(gl.TEXTURE_2D, context.texture)
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, request.bitmap)
-
-    if (context.resolutionLocation) {
-      gl.uniform2f(context.resolutionLocation, outputWidth, outputHeight)
-    }
-
-    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0)
+  if (context.resolutionLocation) {
+    gl.uniform2f(context.resolutionLocation, outputWidth, outputHeight)
   }
 
+  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0)
   return canvas
 }
 

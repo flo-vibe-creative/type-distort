@@ -59,32 +59,3 @@ describe('toleranceForZoom', () => {
     expect(toleranceForZoom(10000, 10000, false)).toBeGreaterThan(0)
   })
 })
-
-describe('거울 효과의 반사 사본', () => {
-  const mirror = (reflect: boolean) => {
-    const warp = createWarp('mirror')
-    if (warp.type !== 'mirror') throw new Error('mirror 여야 한다')
-    warp.params.reflect = reflect
-    warp.params.stretch = 2
-    return warp
-  }
-
-  it('반사를 켜면 같은 모양이 기준선 너머에 한 벌 더 그려진다', () => {
-    const one = warpPointsOf(square, bounds, [mirror(false)], 0.1)
-    const two = warpPointsOf(square, bounds, [mirror(true)], 0.1)
-    expect(two).toHaveLength(one.length * 2)
-
-    // 기준선은 기준 영역의 세로 한가운데(높이 50의 절반)를 가로지른다
-    const first = two[0].points
-    const second = two[one.length].points
-    for (let index = 0; index < first.length; index += 1) {
-      expect(second[index].x).toBeCloseTo(first[index].x, 6)
-      expect(second[index].y).toBeCloseTo(50 - first[index].y, 6)
-    }
-  })
-
-  it('내보내는 경로 문자열에도 사본이 함께 들어간다', () => {
-    const d = warpCommandsToPathData(square, bounds, [mirror(true)], 0.1)
-    expect(d.match(/M/g) ?? []).toHaveLength(2)
-  })
-})
