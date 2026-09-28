@@ -335,3 +335,31 @@ describe('여러 점 함께 옮기기', () => {
     ).toBeNull()
   })
 })
+
+describe('사다리꼴·아코디언 핸들', () => {
+  it('기준점 하나가 놓인다', () => {
+    expect(warpHandles(createWarp('fan'), size).map((h) => [h.id, h.role])).toEqual([
+      ['fan-center', 'anchor'],
+    ])
+    expect(warpHandles(createWarp('accordion'), size).map((h) => h.id)).toEqual([
+      'accordion-center',
+    ])
+  })
+
+  it('기준점을 끌면 그 자리로 간다', () => {
+    expect(dragWarpHandle(createWarp('fan'), size, 'fan-center', { x: 50, y: 25 })).toEqual({
+      centerX: 0.25,
+      centerY: 0.25,
+    })
+    expect(
+      dragWarpHandle(createWarp('accordion'), size, 'accordion-center', { x: 150, y: 75 })
+    ).toEqual({ centerX: 0.75, centerY: 0.75 })
+  })
+
+  it('기준점은 원본 밖으로 나가지 않는다', () => {
+    expect(dragWarpHandle(createWarp('fan'), size, 'fan-center', { x: -500, y: 900 })).toEqual({
+      centerX: 0,
+      centerY: 1,
+    })
+  })
+})

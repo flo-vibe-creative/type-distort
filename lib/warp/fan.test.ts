@@ -54,4 +54,39 @@ describe('warpFan', () => {
     const params = { ...FAN_DEFAULT, topBend: -0.5 }
     expect(warpFan(0, 0, params, ctx).y).toBeCloseTo(50, 6)
   })
+
+  describe('기준점', () => {
+    it('기준점 자리는 아무리 휘어도 제자리에 남는다', () => {
+      const params = {
+        ...FAN_DEFAULT,
+        centerX: 0.3,
+        centerY: 0.7,
+        topBend: 0.6,
+        bottomBend: -0.4,
+        spread: 0.5,
+        skew: 0.3,
+      }
+      const p = warpFan(0.3, 0.7, params, ctx)
+      expect(p.x).toBeCloseTo(0.3 * ctx.width, 6)
+      expect(p.y).toBeCloseTo(0.7 * ctx.height, 6)
+    })
+
+    it('기준점을 옮기면 눌리는 자리도 함께 옮겨진다', () => {
+      const params = { ...FAN_DEFAULT, centerX: 0.25, topBend: 0.5 }
+      const heightAtTop = (u: number) => warpFan(u, 0, params, ctx).y
+      expect(heightAtTop(0.25)).toBeCloseTo(0, 6)
+      // 기준점에서 먼 오른쪽 끝이 가장 많이 솟는다
+      expect(heightAtTop(1)).toBeCloseTo(-50, 6)
+      expect(heightAtTop(0)).toBeCloseTo(-50, 6)
+      expect(heightAtTop(0.5)).toBeLessThan(0)
+      expect(heightAtTop(0.5)).toBeGreaterThan(-50)
+    })
+
+    it('기준점 높이가 퍼짐의 축이 된다', () => {
+      const params = { ...FAN_DEFAULT, centerY: 0.8, spread: 0.5 }
+      // 기준점 높이에서는 가로로 밀리지 않고, 그보다 위는 바깥으로 간다
+      expect(warpFan(1, 0.8, params, ctx).x).toBeCloseTo(200, 6)
+      expect(warpFan(1, 0, params, ctx).x).toBeGreaterThan(200)
+    })
+  })
 })

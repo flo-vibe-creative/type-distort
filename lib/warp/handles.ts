@@ -56,10 +56,19 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
       return handles
     }
 
-    // 슬라이더만으로 다루는 효과 — 조작점 없이 안내선만 보여 준다
+    // 기준점 하나로 다루는 효과 — 그 점은 어떻게 휘어도 제자리에 남는다
     case 'fan':
     case 'accordion':
-      return []
+      return [
+        {
+          id: `${warp.type}-center`,
+          local: {
+            x: warp.params.centerX * size.width,
+            y: warp.params.centerY * size.height,
+          },
+          role: 'anchor',
+        },
+      ]
 
     case 'perspective':
       return warp.params.corners.map((corner, index) => ({
@@ -155,8 +164,14 @@ export function dragWarpHandle(
     }
 
     case 'fan':
-    case 'accordion':
-      return null
+    case 'accordion': {
+      if (handleId !== `${warp.type}-center`) return null
+      const clamp = (value: number) => Math.min(1, Math.max(0, value))
+      return {
+        centerX: clamp(localPoint.x / size.width),
+        centerY: clamp(localPoint.y / size.height),
+      }
+    }
 
     case 'perspective': {
       const index = indexFrom(handleId, 'perspective-', warp.params.corners.length)

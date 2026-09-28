@@ -136,7 +136,7 @@ function GuideLines({
   }
 
   if (warp.type === 'fan' || warp.type === 'accordion') {
-    // 조작점이 없는 효과 — 원본 사각형이 어떤 모양으로 변했는지 테두리로 보여 준다
+    // 원본 사각형이 어떤 모양으로 변했는지 테두리로 보여 준다
     const edge = (from: Point, to: Point) =>
       Array.from({ length: EDGE_SAMPLES }, (_, step) => {
         const ratio = step / EDGE_SAMPLES
@@ -158,7 +158,24 @@ function GuideLines({
     const outline = corners.flatMap((corner, index) =>
       edge(corner, corners[(index + 1) % corners.length])
     )
-    return dashedLine([...outline, outline[0]], warp.type)
+    if (warp.type !== 'accordion') {
+      return dashedLine([...outline, outline[0]], warp.type)
+    }
+
+    // 아코디언은 판이 갈리는 자리도 함께 보여 준다
+    const panels = Math.max(1, Math.round(warp.params.panels))
+    const cuts: Point[][] = []
+    for (let step = -panels; step <= panels * 2; step += 1) {
+      const at = warp.params.centerX + step / panels
+      if (at <= 0 || at >= 1) continue
+      cuts.push(edge({ x: at, y: 0 }, { x: at, y: 1 }))
+    }
+    return (
+      <>
+        {dashedLine([...outline, outline[0]], warp.type)}
+        {cuts.map((cut, index) => dashedLine(cut, `cut-${index}`))}
+      </>
+    )
   }
 
   // 메쉬 — 제어점을 가로줄과 세로줄로 이어 격자를 보여준다.

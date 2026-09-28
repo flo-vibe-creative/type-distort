@@ -17,18 +17,18 @@ describe('warpAccordion', () => {
     }
   })
 
-  it('판이 만나는 자리가 번갈아 위아래로 어긋난다', () => {
-    const params = { ...ACCORDION_DEFAULT, panels: 3, offset: 0.6 }
+  it('판이 만나는 자리가 한 칸 걸러 아래로 밀린다', () => {
+    const params = { ...ACCORDION_DEFAULT, centerX: 0, panels: 3, offset: 0.6 }
     const middleOf = (u: number) => warpAccordion(u, 0.5, params, ctx).y
-    // 자르는 자리는 u = 0, 1/3, 2/3, 1
-    expect(middleOf(0)).toBeCloseTo(50 + 30, 6)
-    expect(middleOf(1 / 3)).toBeCloseTo(50 - 30, 6)
-    expect(middleOf(2 / 3)).toBeCloseTo(50 + 30, 6)
-    expect(middleOf(1)).toBeCloseTo(50 - 30, 6)
+    // 자르는 자리는 u = 0, 1/3, 2/3, 1 — 기준점이 있는 자리는 그대로다
+    expect(middleOf(0)).toBeCloseTo(50, 6)
+    expect(middleOf(1 / 3)).toBeCloseTo(50 - 60, 6)
+    expect(middleOf(2 / 3)).toBeCloseTo(50, 6)
+    expect(middleOf(1)).toBeCloseTo(50 - 60, 6)
   })
 
   it('판 안에서는 끊기지 않고 고르게 이어진다', () => {
-    const params = { ...ACCORDION_DEFAULT, panels: 2, offset: 0.5 }
+    const params = { ...ACCORDION_DEFAULT, centerX: 0, panels: 2, offset: 0.5 }
     const quarter = warpAccordion(0.25, 0.5, params, ctx).y
     const start = warpAccordion(0, 0.5, params, ctx).y
     const end = warpAccordion(0.5, 0.5, params, ctx).y
@@ -36,19 +36,57 @@ describe('warpAccordion', () => {
   })
 
   it('눌림을 주면 판마다 높이가 번갈아 달라진다', () => {
-    const params = { ...ACCORDION_DEFAULT, panels: 2, squeeze: 0.5 }
+    const params = { ...ACCORDION_DEFAULT, centerX: 0, panels: 2, squeeze: 0.5 }
     const heightAt = (u: number) =>
       warpAccordion(u, 1, params, ctx).y - warpAccordion(u, 0, params, ctx).y
-    expect(heightAt(0)).toBeCloseTo(125, 6)
-    expect(heightAt(0.5)).toBeCloseTo(75, 6)
+    expect(heightAt(0)).toBeCloseTo(100, 6)
+    expect(heightAt(0.5)).toBeCloseTo(50, 6)
   })
 
   it('판 수는 소수로 들어와도 가까운 정수로 다룬다', () => {
-    const rounded = { ...ACCORDION_DEFAULT, panels: 2.4, offset: 0.6 }
-    const exact = { ...ACCORDION_DEFAULT, panels: 2, offset: 0.6 }
+    const rounded = { ...ACCORDION_DEFAULT, centerX: 0, panels: 2.4, offset: 0.6 }
+    const exact = { ...ACCORDION_DEFAULT, centerX: 0, panels: 2, offset: 0.6 }
     expect(warpAccordion(0.3, 0.5, rounded, ctx).y).toBeCloseTo(
       warpAccordion(0.3, 0.5, exact, ctx).y,
       6
     )
+  })
+
+  describe('기준점', () => {
+    it('기준점 자리는 아무리 접어도 제자리에 남는다', () => {
+      const params = {
+        ...ACCORDION_DEFAULT,
+        centerX: 0.4,
+        centerY: 0.3,
+        panels: 4,
+        offset: 0.8,
+        squeeze: 0.6,
+      }
+      const p = warpAccordion(0.4, 0.3, params, ctx)
+      expect(p.x).toBeCloseTo(0.4 * ctx.width, 6)
+      expect(p.y).toBeCloseTo(0.3 * ctx.height, 6)
+    })
+
+    it('기준점을 옮기면 판이 갈리는 자리도 함께 옮겨진다', () => {
+      const params = { ...ACCORDION_DEFAULT, centerX: 0.25, panels: 4, offset: 0.5 }
+      const middleOf = (u: number) => warpAccordion(u, 0.5, params, ctx).y
+      // 경계는 0.25에서 0.25씩 — 기준점 자리는 그대로, 한 칸 건너는 밀린다
+      expect(middleOf(0.25)).toBeCloseTo(50, 6)
+      expect(middleOf(0.5)).toBeCloseTo(50 - 50, 6)
+      expect(middleOf(0.75)).toBeCloseTo(50, 6)
+    })
+
+    it('기준점 왼쪽으로도 판이 이어진다', () => {
+      const params = { ...ACCORDION_DEFAULT, centerX: 0.5, panels: 2, offset: 0.5 }
+      expect(warpAccordion(0, 0.5, params, ctx).y).toBeCloseTo(50 - 50, 6)
+      expect(warpAccordion(0.25, 0.5, params, ctx).y).toBeCloseTo(50 - 25, 6)
+    })
+
+    it('기준점 높이를 옮기면 그 높이를 축으로 눌린다', () => {
+      const params = { ...ACCORDION_DEFAULT, centerX: 0, centerY: 0.2, panels: 2, squeeze: 0.5 }
+      // 기준점 높이는 그대로, 아래쪽만 절반으로 눌린다
+      expect(warpAccordion(0.5, 0.2, params, ctx).y).toBeCloseTo(20, 6)
+      expect(warpAccordion(0.5, 1, params, ctx).y).toBeCloseTo(20 + 0.8 * 100 * 0.5, 6)
+    })
   })
 })
