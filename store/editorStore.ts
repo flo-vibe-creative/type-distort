@@ -10,6 +10,7 @@ import type {
 import { sourceSize } from '@/lib/document/types'
 import { contentBounds } from '@/lib/render/canvasBounds'
 import { createWarp, type WarpState } from '@/lib/warp/registry'
+import { duplicateLayer } from '@/lib/document/createLayer'
 import { createWarpEffect, type WarpEffect } from '@/lib/warp/stack'
 import type { WarpType } from '@/lib/warp/types'
 
@@ -25,6 +26,9 @@ export const DEFAULT_CANVAS: CanvasSettings = {
 
 /** 새 레이어가 앞의 것과 정확히 겹쳐 보이지 않도록 어긋나게 두는 간격 */
 const CASCADE_STEP = 24
+/** 붙여넣은 레이어를 원본과 구분되게 어긋나 놓는 거리 */
+const PASTE_OFFSET = 24
+
 /** 어긋난 레이어가 캔버스 밖으로 나가지 않도록 되돌아오는 주기 */
 const CASCADE_WRAP = 8
 
@@ -84,10 +88,18 @@ interface EditorState {
    * 고른 레이어에 이 효과가 없으면 그 레이어의 첫 효과를 쓴다.
    */
   activeWarpId: string | null
+  /** 복사해 둔 레이어들. 문서에 저장되지 않고 되돌리기에도 쌓이지 않는다. */
+  clipboard: Layer[]
 
   reset: () => void
   addLayers: (layers: Layer[]) => void
   removeLayers: (ids: readonly string[]) => void
+  /** 레이어 이름 바꾸기 */
+  renameLayer: (id: string, name: string) => void
+  /** 고른 레이어를 복사해 둔다 (붙여넣기 전까지 보관) */
+  copyLayers: (ids: readonly string[]) => void
+  /** 복사해 둔 레이어를 조금 어긋나게 붙여넣고, 붙인 것을 고른 상태로 둔다 */
+  pasteLayers: () => void
   selectLayers: (ids: readonly string[]) => void
   toggleLayerSelection: (id: string) => void
   toggleLayerVisibility: (id: string) => void
@@ -204,10 +216,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedWarpHandles: [],
   editingWarpLayerId: null,
   activeWarpId: null,
+  clipboard: [],
 
   reset: () =>
     set({
       document: emptyDocument(),
+      clipboard: [],
       selectedLayerIds: [],
       viewport: { zoom: 1, panX: 0, panY: 0 },
       past: [],
@@ -243,6 +257,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedLayerIds: placed.map((layer) => layer.id),
         selectedWarpHandles: [],
         editingWarpLayerId: null,
+      }
+    }),
+
+  renameLayer: (id, name) =>
+    set((state) =>
+      mapLayer(
+        state,
+        id,
+        (layer) => ({ ...layer, name: name.trim() || layer.name }),
+        `name:${id}`
+      )
+    ),
+
+  copyLayers: (ids) =>
+    set((state) => {
+      const picked = state.document.layers.filter((layer) => ids.includes(layer.id))
+      return picked.length === 0 ? {} : { clipboard: picked }
+    }),
+
+  pasteLayers: () =>
+    set((state) => {
+      if (state.clipboard.length === 0) return {}
+      const pasted = state.clipboard.map((layer) => duplicateLayer(layer, PASTE_OFFSET))
+      return {
+        ...withHistory(state, {
+          ...state.document,
+          layers: [...state.document.layers, ...pasted],
+        }),
+        // 붙여넣은 것을 골라 두어 바로 옮길 수 있게 한다
+        selectedLayerIds: pasted.map((layer) => layer.id),
+        selectedWarpHandles: [],
+        editingWarpLayerId: null,
+        // 다시 붙여넣으면 또 어긋나게 쌓이도록 방금 붙인 것을 복사해 둔다
+        clipboard: pasted,
       }
     }),
 

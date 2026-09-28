@@ -748,3 +748,76 @@ describe('왜곡 효과 겹쳐 쓰기', () => {
     expect(store().selectedWarpHandles).toEqual([])
   })
 })
+
+describe('레이어 복사·붙여넣기와 이름 바꾸기', () => {
+  it('복사한 레이어를 어긋나게 붙여넣고 붙인 것을 고른다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    const before = store().document.layers[0]
+    store().copyLayers([before.id])
+    store().pasteLayers()
+
+    const layers = store().document.layers
+    expect(layers).toHaveLength(2)
+    expect(layers[1].id).not.toBe(before.id)
+    expect(layers[1].name).toBe(before.name)
+    expect(layers[1].transform.x).toBe(before.transform.x + 24)
+    expect(layers[1].transform.y).toBe(before.transform.y + 24)
+    expect(store().selectedLayerIds).toEqual([layers[1].id])
+  })
+
+  it('사본의 왜곡은 따로 떨어져 원본이 함께 바뀌지 않는다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    const source = store().document.layers[0]
+    store().copyLayers([source.id])
+    store().pasteLayers()
+
+    const copy = store().document.layers[1]
+    expect(copy.warps[0].id).not.toBe(source.warps[0].id)
+    store().updateWarpParams(copy.id, copy.warps[0].id, { angle: 90 })
+    expect(store().document.layers[0].warps[0].params).toMatchObject({ angle: 0 })
+    expect(store().document.layers[1].warps[0].params).toMatchObject({ angle: 90 })
+  })
+
+  it('여러 번 붙여넣으면 계속 어긋나게 쌓인다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    const x = store().document.layers[0].transform.x
+    store().copyLayers([a.id])
+    store().pasteLayers()
+    store().pasteLayers()
+
+    const layers = store().document.layers
+    expect(layers).toHaveLength(3)
+    expect(layers[1].transform.x).toBe(x + 24)
+    expect(layers[2].transform.x).toBe(x + 48)
+  })
+
+  it('복사해 둔 것이 없으면 붙여넣어도 아무 일도 없다', () => {
+    const before = store().past.length
+    store().pasteLayers()
+    expect(store().document.layers).toHaveLength(0)
+    expect(store().past.length).toBe(before)
+  })
+
+  it('붙여넣기는 되돌릴 수 있다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().copyLayers([a.id])
+    store().pasteLayers()
+    store().undo()
+    expect(store().document.layers).toHaveLength(1)
+  })
+
+  it('이름을 바꾸고, 빈 이름은 예전 이름을 지킨다', () => {
+    const a = fakeLayer('A')
+    store().addLayers([a])
+    store().renameLayer(a.id, '  제목 글자  ')
+    expect(store().document.layers[0].name).toBe('제목 글자')
+    store().renameLayer(a.id, '   ')
+    expect(store().document.layers[0].name).toBe('제목 글자')
+    store().undo()
+    expect(store().document.layers[0].name).toBe('A')
+  })
+})

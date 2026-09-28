@@ -94,7 +94,7 @@ export function InspectorPanel() {
             className="w-full rounded-md border border-border py-1.5 hover:bg-surface-minimal"
           >
             <Text variant="ui13" as="span" color="text-fg-secondary">
-              점 편집 (레이어 더블클릭)
+              점 편집 (대지에서 레이어 더블클릭)
             </Text>
           </button>
         </div>

@@ -72,6 +72,20 @@ export function useEditorKeyboard() {
         return
       }
 
+      // Cmd/Ctrl + C 복사, Cmd/Ctrl + V 붙여넣기.
+      // 글자를 치는 칸에서는 브라우저의 글자 복사가 우선이다.
+      if (withCommand && !isTextEntry(event.target) && !event.shiftKey && !event.altKey) {
+        if (event.code === 'KeyC') {
+          if (state.selectedLayerIds.length > 0) state.copyLayers(state.selectedLayerIds)
+          return
+        }
+        if (event.code === 'KeyV') {
+          event.preventDefault()
+          if (!event.repeat) state.pasteLayers()
+          return
+        }
+      }
+
       if (isTextEntry(event.target)) return
 
       if (event.key === 'Escape') {

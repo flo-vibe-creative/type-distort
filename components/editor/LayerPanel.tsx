@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { Text } from '@/components/ui/Text'
 import type { Layer } from '@/lib/document/types'
 import { useEditorStore } from '@/store/editorStore'
@@ -20,6 +21,45 @@ function LayerKindIcon({ layer }: { layer: Layer }) {
   )
 }
 
+/** 레이어 이름을 그 자리에서 고치는 칸 — 열리면 바로 글자가 다 골라진 채로 시작한다 */
+function NameInput({
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onCommit: () => void
+  onCancel: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      aria-label="레이어 이름"
+      onChange={(event) => onChange(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onBlur={onCommit}
+      onKeyDown={(event) => {
+        event.stopPropagation()
+        if (event.key === 'Enter') onCommit()
+        if (event.key === 'Escape') onCancel()
+      }}
+      className="w-full rounded border border-blue-800 bg-surface px-1 py-0.5 text-[13px] leading-[18px] outline-none"
+    />
+  )
+}
+
 export function LayerPanel() {
   const layers = useEditorStore((state) => state.document.layers)
   const selectedLayerIds = useEditorStore((state) => state.selectedLayerIds)
@@ -28,8 +68,10 @@ export function LayerPanel() {
   const toggleLayerVisibility = useEditorStore((state) => state.toggleLayerVisibility)
   const reorderLayer = useEditorStore((state) => state.reorderLayer)
   const removeLayers = useEditorStore((state) => state.removeLayers)
-  const beginWarpEditing = useEditorStore((state) => state.beginWarpEditing)
+  const renameLayer = useEditorStore((state) => state.renameLayer)
   const editingWarpLayerId = useEditorStore((state) => state.editingWarpLayerId)
+  // 이름을 고치고 있는 레이어와, 고치는 동안의 글자
+  const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null)
 
   // 배열 뒤쪽이 화면에서 위에 그려지므로 목록은 뒤집어 보여준다
   const ordered = [...layers].reverse()
@@ -67,7 +109,7 @@ export function LayerPanel() {
                     if (event.shiftKey) toggleLayerSelection(layer.id)
                     else selectLayers([layer.id])
                   }}
-                  onDoubleClick={() => beginWarpEditing(layer.id)}
+                  onDoubleClick={() => setRenaming({ id: layer.id, draft: layer.name })}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
@@ -84,13 +126,25 @@ export function LayerPanel() {
                 >
                   <LayerKindIcon layer={layer} />
                   <span className="min-w-0 flex-1">
-                    <Text
-                      variant="ui13"
-                      truncate
-                      color={layer.visible ? 'text-fg-primary' : 'text-fg-disabled'}
-                    >
-                      {layer.name}
-                    </Text>
+                    {renaming?.id === layer.id ? (
+                      <NameInput
+                        value={renaming.draft}
+                        onChange={(draft) => setRenaming({ id: layer.id, draft })}
+                        onCommit={() => {
+                          renameLayer(layer.id, renaming.draft)
+                          setRenaming(null)
+                        }}
+                        onCancel={() => setRenaming(null)}
+                      />
+                    ) : (
+                      <Text
+                        variant="ui13"
+                        truncate
+                        color={layer.visible ? 'text-fg-primary' : 'text-fg-disabled'}
+                      >
+                        {layer.name}
+                      </Text>
+                    )}
                   </span>
 
                   <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex group-focus-within:flex">

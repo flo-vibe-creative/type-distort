@@ -2,13 +2,37 @@ import { boundsOfCommands, mergeBounds, type Bounds } from '@/lib/geometry/bbox'
 import type { Layer } from '@/lib/document/types'
 import type { RasterSource } from '@/lib/raster/loadImage'
 import type { ParsedSvg } from '@/lib/svg/parse'
-import { createWarpEffect } from '@/lib/warp/stack'
+import { createWarpEffect, nextWarpEffectId } from '@/lib/warp/stack'
 
 let sequence = 0
 
 function nextId(): string {
   sequence += 1
   return `layer-${Date.now().toString(36)}-${sequence}`
+}
+
+/**
+ * 레이어를 그대로 베낀 새 레이어를 만든다 (붙여넣기용).
+ *
+ * 왜곡 값은 따로 떼어 베껴, 사본을 고쳐도 원본이 함께 바뀌지 않게 한다.
+ * 그림 원본은 크기가 커서 함께 쓰지만, 그림 자체는 바뀌지 않으므로 문제가 없다.
+ */
+export function duplicateLayer(layer: Layer, offset: number): Layer {
+  return {
+    ...layer,
+    id: nextId(),
+    name: layer.name,
+    transform: {
+      ...layer.transform,
+      x: layer.transform.x + offset,
+      y: layer.transform.y + offset,
+    },
+    warps: layer.warps.map((warp) => ({
+      ...warp,
+      id: nextWarpEffectId(),
+      params: structuredClone(warp.params),
+    })) as Layer['warps'],
+  }
 }
 
 /** 파일 이름에서 확장자를 떼어 레이어 이름으로 쓴다 */
