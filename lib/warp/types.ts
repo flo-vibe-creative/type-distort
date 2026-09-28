@@ -31,4 +31,4 @@ export interface WarpContext {
 export type WarpFn<P> = (u: number, v: number, params: P, ctx: WarpContext) => Point
 
 /** 등록된 왜곡 효과의 식별자 */
-export type WarpType = 'arc' | 'mesh' | 'perspective' | 'bulge'
+export type WarpType = 'arc' | 'mesh' | 'perspective' | 'bulge' | 'fan' | 'accordion'

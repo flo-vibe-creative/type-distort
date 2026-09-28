@@ -56,6 +56,11 @@ export function warpHandles(warp: WarpState, size: WarpContext): WarpHandle[] {
       return handles
     }
 
+    // 슬라이더만으로 다루는 효과 — 조작점 없이 안내선만 보여 준다
+    case 'fan':
+    case 'accordion':
+      return []
+
     case 'perspective':
       return warp.params.corners.map((corner, index) => ({
         id: `perspective-${index}`,
@@ -148,6 +153,10 @@ export function dragWarpHandle(
       }
       return null
     }
+
+    case 'fan':
+    case 'accordion':
+      return null
 
     case 'perspective': {
       const index = indexFrom(handleId, 'perspective-', warp.params.corners.length)

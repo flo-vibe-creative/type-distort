@@ -135,6 +135,32 @@ function GuideLines({
     )
   }
 
+  if (warp.type === 'fan' || warp.type === 'accordion') {
+    // 조작점이 없는 효과 — 원본 사각형이 어떤 모양으로 변했는지 테두리로 보여 준다
+    const edge = (from: Point, to: Point) =>
+      Array.from({ length: EDGE_SAMPLES }, (_, step) => {
+        const ratio = step / EDGE_SAMPLES
+        return toCanvas(
+          applyWarp(
+            warp,
+            from.x + (to.x - from.x) * ratio,
+            from.y + (to.y - from.y) * ratio,
+            size
+          )
+        )
+      })
+    const corners = [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+      { x: 0, y: 1 },
+    ]
+    const outline = corners.flatMap((corner, index) =>
+      edge(corner, corners[(index + 1) % corners.length])
+    )
+    return dashedLine([...outline, outline[0]], warp.type)
+  }
+
   // 메쉬 — 제어점을 가로줄과 세로줄로 이어 격자를 보여준다.
   // 점 편집 중에는 줄을 눌러 그 줄의 네 점을 통째로 고를 수 있다.
   const grid = warp.params.points.map((point) =>

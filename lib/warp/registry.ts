@@ -1,5 +1,11 @@
 import { ARC_DEFAULT, warpArc, type ArcParams } from '@/lib/warp/arc'
+import {
+  ACCORDION_DEFAULT,
+  warpAccordion,
+  type AccordionParams,
+} from '@/lib/warp/accordion'
 import { BULGE_DEFAULT, warpBulge, type BulgeParams } from '@/lib/warp/bulge'
+import { FAN_DEFAULT, warpFan, type FanParams } from '@/lib/warp/fan'
 import { MESH_DEFAULT, warpMesh, type MeshParams } from '@/lib/warp/mesh'
 import {
   PERSPECTIVE_DEFAULT,
@@ -33,8 +39,17 @@ export type WarpState =
   | { type: 'mesh'; params: MeshParams }
   | { type: 'perspective'; params: PerspectiveParams }
   | { type: 'bulge'; params: BulgeParams }
+  | { type: 'fan'; params: FanParams }
+  | { type: 'accordion'; params: AccordionParams }
 
-export const WARP_TYPES: readonly WarpType[] = ['arc', 'mesh', 'perspective', 'bulge']
+export const WARP_TYPES: readonly WarpType[] = [
+  'arc',
+  'mesh',
+  'perspective',
+  'bulge',
+  'fan',
+  'accordion',
+]
 
 export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
   arc: {
@@ -79,6 +94,23 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
       { key: 'waves', label: '파동 수', min: 0, max: 8, step: 1 },
     ],
   },
+  fan: {
+    label: '사다리꼴 / 부채꼴',
+    sliders: [
+      { key: 'topBend', label: '윗선 휨', min: -1, max: 1, step: 0.01 },
+      { key: 'bottomBend', label: '아랫선 휨', min: -1, max: 1, step: 0.01 },
+      { key: 'spread', label: '퍼짐', min: -1, max: 1, step: 0.01 },
+      { key: 'skew', label: '기울기', min: -1, max: 1, step: 0.01 },
+    ],
+  },
+  accordion: {
+    label: '접힌 띠 / 아코디언',
+    sliders: [
+      { key: 'panels', label: '판 수', min: 2, max: 8, step: 1 },
+      { key: 'offset', label: '어긋남', min: -1, max: 1, step: 0.01 },
+      { key: 'squeeze', label: '눌림', min: -1, max: 1, step: 0.01 },
+    ],
+  },
 }
 
 /** 기본 파라미터를 복제해 새 왜곡 상태를 만든다 (효과끼리 값이 섞이지 않도록) */
@@ -95,6 +127,10 @@ export function createWarp(type: WarpType): WarpState {
       }
     case 'bulge':
       return { type: 'bulge', params: { ...BULGE_DEFAULT } }
+    case 'fan':
+      return { type: 'fan', params: { ...FAN_DEFAULT } }
+    case 'accordion':
+      return { type: 'accordion', params: { ...ACCORDION_DEFAULT } }
   }
 }
 
@@ -109,5 +145,9 @@ export function applyWarp(warp: WarpState, u: number, v: number, ctx: WarpContex
       return warpPerspective(u, v, warp.params, ctx)
     case 'bulge':
       return warpBulge(u, v, warp.params, ctx)
+    case 'fan':
+      return warpFan(u, v, warp.params, ctx)
+    case 'accordion':
+      return warpAccordion(u, v, warp.params, ctx)
   }
 }
