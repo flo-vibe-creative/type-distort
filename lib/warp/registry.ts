@@ -101,8 +101,6 @@ export const WARP_EFFECTS: Record<WarpType, WarpEffectMeta> = {
       { key: 'bottomBend', label: '아랫선 휨', min: -1, max: 1, step: 0.01 },
       { key: 'spread', label: '좌우 퍼짐', min: -1, max: 1, step: 0.01 },
       { key: 'skew', label: '좌우 기울기', min: -1, max: 1, step: 0.01 },
-      { key: 'leftBend', label: '왼선 휨', min: -1, max: 1, step: 0.01 },
-      { key: 'rightBend', label: '오른선 휨', min: -1, max: 1, step: 0.01 },
       { key: 'spreadY', label: '위아래 퍼짐', min: -1, max: 1, step: 0.01 },
       { key: 'skewY', label: '위아래 기울기', min: -1, max: 1, step: 0.01 },
     ],

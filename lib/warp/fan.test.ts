@@ -90,28 +90,7 @@ describe('warpFan', () => {
     })
   })
 
-  describe('세로 기준선', () => {
-    it('왼선 휨을 주면 위아래 끝이 왼쪽으로 벌어지고 기준 높이는 그대로다', () => {
-      const params = { ...FAN_DEFAULT, leftBend: 0.5 }
-      expect(warpFan(0, 0, params, ctx).x).toBeCloseTo(-100, 6)
-      expect(warpFan(0, 1, params, ctx).x).toBeCloseTo(-100, 6)
-      expect(warpFan(0, 0.5, params, ctx).x).toBeCloseTo(0, 6)
-    })
-
-    it('오른선 휨은 오른변만 움직인다', () => {
-      const params = { ...FAN_DEFAULT, rightBend: 0.4 }
-      expect(warpFan(1, 0, params, ctx).x).toBeCloseTo(280, 6)
-      expect(warpFan(0, 0, params, ctx).x).toBeCloseTo(0, 6)
-    })
-
-    it('두 휨을 같은 방향으로 주면 기준 높이가 눌리고 위아래 끝이 넓어진다', () => {
-      const params = { ...FAN_DEFAULT, leftBend: 0.5, rightBend: 0.5 }
-      const atEdge = warpFan(1, 0, params, ctx).x - warpFan(0, 0, params, ctx).x
-      const atMiddle = warpFan(1, 0.5, params, ctx).x - warpFan(0, 0.5, params, ctx).x
-      expect(atEdge).toBeGreaterThan(atMiddle)
-      expect(atMiddle).toBeCloseTo(200, 6)
-    })
-
+  describe('위아래로 밀기', () => {
     it('위아래 퍼짐은 글자 왼쪽과 오른쪽을 서로 반대로 민다', () => {
       const params = { ...FAN_DEFAULT, spreadY: 0.5 }
       // 아래쪽 끝에서 왼쪽은 더 아래로, 오른쪽은 위로 간다
@@ -127,7 +106,7 @@ describe('warpFan', () => {
       expect(warpFan(1, 0.4, params, ctx).y - 40).toBeCloseTo(-25, 6)
     })
 
-    it('두 방향을 함께 걸어도 기준점은 제자리에 남는다', () => {
+    it('여러 값을 함께 걸어도 기준점은 제자리에 남는다', () => {
       const params = {
         ...FAN_DEFAULT,
         centerX: 0.35,
@@ -136,8 +115,6 @@ describe('warpFan', () => {
         bottomBend: -0.3,
         spread: 0.5,
         skew: 0.2,
-        leftBend: 0.6,
-        rightBend: 0.3,
         spreadY: -0.4,
         skewY: 0.25,
       }
